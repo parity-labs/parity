@@ -263,8 +263,8 @@ export default function LaunchDetailPage() {
           </p>
           <div className="space-y-2.5 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Curve</span>
-              <span className="capitalize">{launch.curvePreset}</span>
+              <span className="text-muted-foreground">Creator Fee</span>
+              <span className="font-mono text-xs">0.95% → 0.05%</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Charity</span>

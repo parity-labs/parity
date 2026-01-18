@@ -4,6 +4,7 @@ import {
   InfoIcon,
   LockSimpleIcon,
   RocketIcon,
+  TrendDownIcon,
   WarningIcon,
 } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
@@ -11,27 +12,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useSession } from "@/lib/auth-client";
 import { rpc } from "@/lib/rpc/client";
-
-const CURVE_OPTIONS = [
-  {
-    id: "community",
-    name: "Community",
-    description: "Gentle curve. Good for community tokens.",
-    details: "0.5% fee, high virtual liquidity",
-  },
-  {
-    id: "standard",
-    name: "Standard",
-    description: "Balanced curve. Similar to pump.fun.",
-    details: "1% fee, moderate virtual liquidity",
-  },
-  {
-    id: "scarce",
-    name: "Scarce",
-    description: "Steeper curve for limited editions.",
-    details: "1% fee, low virtual liquidity",
-  },
-] as const;
 
 interface FormErrors {
   name?: string;
@@ -89,7 +69,6 @@ export default function CreatePage() {
     name: "",
     symbol: "",
     description: "",
-    curvePreset: "standard" as "community" | "standard" | "scarce",
     charityWallet: "",
     charityName: "",
   });
@@ -102,7 +81,6 @@ export default function CreatePage() {
         name: form.name.trim(),
         symbol: form.symbol.trim().toUpperCase(),
         description: form.description.trim() || undefined,
-        curvePreset: form.curvePreset,
         charityWallet: form.charityWallet.trim(),
         charityName: form.charityName.trim() || undefined,
       }),
@@ -216,49 +194,29 @@ export default function CreatePage() {
 
         <section className="space-y-4">
           <h2 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-            Curve Configuration
+            Creator Fee
           </h2>
 
-          <div className="grid gap-2">
-            {CURVE_OPTIONS.map((curve) => (
-              <label
-                className={`flex cursor-pointer items-center gap-4 border p-4 transition-colors ${
-                  form.curvePreset === curve.id
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-muted-foreground"
-                }`}
-                key={curve.id}
-              >
-                <input
-                  checked={form.curvePreset === curve.id}
-                  className="sr-only"
-                  name="curvePreset"
-                  onChange={() => updateField("curvePreset", curve.id)}
-                  type="radio"
-                  value={curve.id}
-                />
-                <div
-                  className={`flex size-4 shrink-0 items-center justify-center border-2 ${
-                    form.curvePreset === curve.id
-                      ? "border-primary bg-primary"
-                      : "border-muted-foreground"
-                  }`}
-                >
-                  {form.curvePreset === curve.id && (
-                    <div className="size-1.5 bg-primary-foreground" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{curve.name}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {curve.description}
-                  </p>
-                </div>
-                <span className="hidden font-mono text-muted-foreground text-xs sm:block">
-                  {curve.details}
-                </span>
-              </label>
-            ))}
+          <div className="flex items-start gap-3 border border-border bg-muted/30 p-4">
+            <TrendDownIcon
+              className="mt-0.5 size-5 shrink-0 text-primary"
+              weight="bold"
+            />
+            <div className="space-y-2">
+              <p className="font-medium text-sm">Dynamic Fee Structure</p>
+              <p className="text-muted-foreground text-sm">
+                Your creator fee starts at{" "}
+                <span className="font-mono text-foreground">0.95%</span> for
+                early trading when hype matters most, then automatically
+                decreases to{" "}
+                <span className="font-mono text-foreground">0.05%</span> as your
+                token grows.
+              </p>
+              <p className="text-muted-foreground text-xs">
+                This rewards early effort while keeping fees low for high-volume
+                trading on successful tokens.
+              </p>
+            </div>
           </div>
         </section>
 

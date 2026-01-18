@@ -11,48 +11,81 @@ export function getDbcClient() {
   return dbcClient;
 }
 
-// Preset curve configurations for Parity
-// These are safe defaults that prevent rug-style curves
-
-export const CURVE_PRESETS = {
-  // Gentle curve for community tokens
-  community: {
-    name: "Community",
-    description: "Gentle price curve. Good for community tokens.",
-    basePrice: 0.0001,
-    priceSlope: 0.000_000_1,
-    virtualLiquidity: 50_000,
-    buyFeeBps: 50, // 0.5%
-    sellFeeBps: 50,
-    maxSupply: 1_000_000_000,
-  },
-
-  // Standard curve similar to pump.fun
-  standard: {
-    name: "Standard",
-    description: "Balanced curve. Similar to pump.fun dynamics.",
-    basePrice: 0.0001,
-    priceSlope: 0.000_000_5,
-    virtualLiquidity: 10_000,
-    buyFeeBps: 100, // 1%
-    sellFeeBps: 100,
-    maxSupply: 1_000_000_000,
-  },
-
-  // Steeper curve for limited supply tokens
-  scarce: {
-    name: "Scarce",
-    description: "Steeper curve for limited editions.",
-    basePrice: 0.001,
-    priceSlope: 0.000_005,
-    virtualLiquidity: 5000,
-    buyFeeBps: 100,
-    sellFeeBps: 100,
-    maxSupply: 100_000_000,
-  },
+// Standard curve configuration for all Parity launches
+export const CURVE_CONFIG = {
+  name: "Standard",
+  description: "Balanced curve with dynamic creator fees.",
+  basePrice: 0.0001,
+  priceSlope: 0.000_000_5,
+  virtualLiquidity: 10_000,
+  maxSupply: 1_000_000_000,
 } as const;
 
-export type CurvePreset = keyof typeof CURVE_PRESETS;
+// Legacy type for database compatibility
+export type CurvePreset = "community" | "standard" | "scarce";
+
+/**
+ * Dynamic creator fee calculation based on market cap.
+ *
+ * pump.fun-style dynamic fee: starts higher for low-cap tokens to reward
+ * early hype and effort, then drops as the token grows to avoid punishing
+ * successful projects with high fees that could kill volume.
+ *
+ * Fee ranges from 0.95% (95 bps) at low cap to 0.05% (5 bps) at high cap.
+ *
+ * @param marketCapSol - Current market cap in SOL
+ * @returns Fee in basis points (1 bps = 0.01%)
+ */
+export function getCreatorFeeBps(marketCapSol: number): number {
+  const MIN_FEE_BPS = 5; // 0.05% floor
+  const MAX_FEE_BPS = 95; // 0.95% ceiling
+  const LOW_CAP_THRESHOLD = 10; // Full fee below 10 SOL
+  const HIGH_CAP_THRESHOLD = 1000; // Minimum fee above 1000 SOL
+
+  if (marketCapSol <= LOW_CAP_THRESHOLD) {
+    return MAX_FEE_BPS;
+  }
+
+  if (marketCapSol >= HIGH_CAP_THRESHOLD) {
+    return MIN_FEE_BPS;
+  }
+
+  // Logarithmic decay between thresholds for smooth transition
+  const logLow = Math.log(LOW_CAP_THRESHOLD);
+  const logHigh = Math.log(HIGH_CAP_THRESHOLD);
+  const logCap = Math.log(marketCapSol);
+
+  const ratio = (logCap - logLow) / (logHigh - logLow);
+  const fee = MAX_FEE_BPS - ratio * (MAX_FEE_BPS - MIN_FEE_BPS);
+
+  return Math.round(fee);
+}
+
+/**
+ * Get fee breakdown for display purposes.
+ *
+ * @param marketCapSol - Current market cap in SOL
+ * @returns Fee information with percentage and description
+ */
+export function getCreatorFeeInfo(marketCapSol: number): {
+  feeBps: number;
+  feePercent: string;
+  tier: "low" | "medium" | "high";
+} {
+  const feeBps = getCreatorFeeBps(marketCapSol);
+  const feePercent = (feeBps / 100).toFixed(2);
+
+  let tier: "low" | "medium" | "high";
+  if (marketCapSol < 50) {
+    tier = "low";
+  } else if (marketCapSol < 500) {
+    tier = "medium";
+  } else {
+    tier = "high";
+  }
+
+  return { feeBps, feePercent, tier };
+}
 
 // Fee distribution for Parity platform (from our fee structure)
 export const FEE_DISTRIBUTION = {

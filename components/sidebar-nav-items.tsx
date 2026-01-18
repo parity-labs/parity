@@ -2,6 +2,7 @@
 
 import {
   HouseSimpleIcon,
+  MagnifyingGlassIcon,
   PlusCircleIcon,
   RocketLaunchIcon,
 } from "@phosphor-icons/react";
@@ -15,7 +16,8 @@ import {
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", icon: HouseSimpleIcon },
-  { href: "/launches", label: "Launches", icon: RocketLaunchIcon },
+  { href: "/explore", label: "Explore", icon: MagnifyingGlassIcon },
+  { href: "/launches", label: "My Launches", icon: RocketLaunchIcon },
   { href: "/create", label: "Create", icon: PlusCircleIcon },
 ];
 

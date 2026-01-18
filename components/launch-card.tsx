@@ -11,7 +11,6 @@ interface Launch {
   name: string;
   symbol: string;
   status: "pending" | "active" | "migrated" | "failed";
-  curvePreset: "community" | "standard" | "scarce";
   charityName: string | null;
   createdAt: Date;
 }
@@ -56,15 +55,11 @@ export function LaunchCard({ launch }: { launch: Launch }) {
               ${launch.symbol}
             </span>
           </div>
-          <div className="mt-1 flex items-center gap-3 text-muted-foreground text-sm">
-            <span className="capitalize">{launch.curvePreset}</span>
-            {launch.charityName && (
-              <>
-                <span>•</span>
-                <span>{launch.charityName}</span>
-              </>
-            )}
-          </div>
+          {launch.charityName && (
+            <p className="mt-1 text-muted-foreground text-sm">
+              {launch.charityName}
+            </p>
+          )}
         </div>
         <div
           className={`flex shrink-0 items-center gap-1.5 px-2 py-1 text-xs ${status.className}`}

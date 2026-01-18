@@ -10,8 +10,6 @@ import {
 } from "@/lib/meteora";
 import { authedProcedure, publicProcedure } from "../procedures";
 
-const curvePreset = z.enum(["community", "standard", "scarce"]);
-
 const solanaAddress = z.string().refine(
   (val) => {
     try {
@@ -76,10 +74,49 @@ export const launchRouter = {
       .orderBy(desc(launch.createdAt));
   }),
 
-  get: authedProcedure
+  listAll: publicProcedure
+    .input(
+      z
+        .object({
+          limit: z.number().min(1).max(100).default(50),
+          status: z
+            .enum(["pending", "active", "migrated", "failed"])
+            .optional(),
+        })
+        .optional()
+    )
+    .handler(async ({ input }) => {
+      const conditions = input?.status ? [eq(launch.status, input.status)] : [];
+      return await db
+        .select({
+          id: launch.id,
+          name: launch.name,
+          symbol: launch.symbol,
+          description: launch.description,
+          image: launch.image,
+          curvePreset: launch.curvePreset,
+          charityName: launch.charityName,
+          charityWallet: launch.charityWallet,
+          status: launch.status,
+          poolAddress: launch.poolAddress,
+          tokenMint: launch.tokenMint,
+          createdAt: launch.createdAt,
+          migratedAt: launch.migratedAt,
+        })
+        .from(launch)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(launch.createdAt))
+        .limit(input?.limit ?? 50);
+    }),
+
+  get: publicProcedure
     .input(z.object({ id: z.string() }))
-    .handler(async ({ input, context }) => {
-      const result = await getLaunchByOwner(input.id, context.user.id);
+    .handler(async ({ input }) => {
+      const [result] = await db
+        .select()
+        .from(launch)
+        .where(eq(launch.id, input.id))
+        .limit(1);
       if (!result) {
         throw new Error("Launch not found");
       }
@@ -93,7 +130,6 @@ export const launchRouter = {
         symbol: z.string().min(1).max(10).toUpperCase(),
         description: z.string().max(500).optional(),
         image: z.url().optional(),
-        curvePreset,
         charityWallet: solanaAddress,
         charityName: z.string().max(100).optional(),
       })
@@ -107,7 +143,7 @@ export const launchRouter = {
         symbol: input.symbol,
         description: input.description,
         image: input.image,
-        curvePreset: input.curvePreset,
+        curvePreset: "standard", // All launches use standard curve with dynamic fees
         charityWallet: input.charityWallet,
         charityName: input.charityName,
         status: "pending",
@@ -123,7 +159,6 @@ export const launchRouter = {
         symbol: z.string().min(1).max(10).toUpperCase().optional(),
         description: z.string().max(500).optional(),
         image: z.string().url().optional(),
-        curvePreset: curvePreset.optional(),
         charityWallet: solanaAddress.optional(),
         charityName: z.string().max(100).optional(),
       })

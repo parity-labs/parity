@@ -12,7 +12,6 @@ interface Launch {
   name: string;
   symbol: string;
   status: "pending" | "active" | "migrated" | "failed";
-  curvePreset: "community" | "standard" | "scarce";
   charityName: string | null;
   createdAt: Date;
 }
