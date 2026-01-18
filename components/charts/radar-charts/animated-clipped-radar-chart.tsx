@@ -1,5 +1,9 @@
 "use client";
+import { TrendingDown } from "lucide-react";
+import { useMotionValueEvent, useSpring } from "motion/react";
+import { useEffect, useState } from "react";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart } from "recharts";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -8,15 +12,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
-import { TrendingDown } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useSpring, useMotionValueEvent } from "motion/react";
 
 const chartData = [
   { month: "January", desktop: 186 },
@@ -48,11 +48,11 @@ export function AnimatedClippedRadarChart() {
   useEffect(() => {
     if (!hasAnimated) {
       springAngle.set(360);
-          springValue.set(chartData[chartData.length - 1].desktop);
+      springValue.set(chartData[chartData.length - 1].desktop);
       setHasAnimated(true);
     }
   }, [hasAnimated, springAngle, springValue]);
- 
+
   const centerX = 125;
   const centerY = 125;
   const radius = 120;
@@ -65,7 +65,7 @@ export function AnimatedClippedRadarChart() {
       <CardHeader className="items-center pb-4">
         <CardTitle>
           {Math.round(hoveredValue)}
-          <Badge variant="secondary" className="ml-2">
+          <Badge className="ml-2" variant="secondary">
             <TrendingDown className="h-4 w-4" />
             <span>-5.2%</span>
           </Badge>
@@ -76,13 +76,16 @@ export function AnimatedClippedRadarChart() {
       </CardHeader>
       <CardContent className="pb-0">
         <ChartContainer
-          config={chartConfig}
           className="mx-auto aspect-square max-h-[250px]"
+          config={chartConfig}
         >
           <RadarChart
-            width={250}
-            height={250}
             data={chartData}
+            height={250}
+            onMouseLeave={() => {
+              springAngle.set(360);
+              springValue.set(chartData[chartData.length - 1].desktop);
+            }}
             onMouseMove={(state) => {
               if (state.activePayload && state.activePayload[0]) {
                 const v = state.activePayload[0].value;
@@ -92,19 +95,16 @@ export function AnimatedClippedRadarChart() {
                 springValue.set(v);
               }
             }}
-            onMouseLeave={() => {
-              springAngle.set(360);
-              springValue.set(chartData[chartData.length - 1].desktop);
-            }}
+            width={250}
           >
-            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+            <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
             <PolarAngleAxis dataKey="month" />
             <PolarGrid strokeDasharray="3 3" />
 
             <defs>
-                <clipPath id="clipped-sector">
+              <clipPath id="clipped-sector">
                 {currentAngle >= 360 ? (
-                  <circle cx={centerX} cy={centerY} r={radius} fill="white" />
+                  <circle cx={centerX} cy={centerY} fill="white" r={radius} />
                 ) : (
                   <path
                     d={`
@@ -123,8 +123,8 @@ export function AnimatedClippedRadarChart() {
               <linearGradient
                 id="gradient-clipped-radar-desktop"
                 x1="0"
-                y1="0"
                 x2="0"
+                y1="0"
                 y2="1"
               >
                 <stop
@@ -139,15 +139,14 @@ export function AnimatedClippedRadarChart() {
                 />
               </linearGradient>
             </defs>
-                
+
             <Radar
+              clipPath="url(#clipped-sector)"
               dataKey="desktop"
-              stroke={chartConfig.desktop.color}
               fill="url(#gradient-clipped-radar-desktop)"
               fillOpacity={0.4}
-              clipPath="url(#clipped-sector)"
+              stroke={chartConfig.desktop.color}
             />
-            
           </RadarChart>
         </ChartContainer>
       </CardContent>

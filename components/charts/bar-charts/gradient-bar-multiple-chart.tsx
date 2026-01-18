@@ -1,7 +1,8 @@
 "use client";
 
+import { TrendingDown } from "lucide-react";
 import { Bar, BarChart, XAxis } from "recharts";
-
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -10,13 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
-import { TrendingDown } from "lucide-react";
 
 const chartData = [
   { month: "January", desktop: 186, mobile: 80 },
@@ -45,8 +44,8 @@ export function GradientBarMultipleChart() {
         <CardTitle>
           Bar Chart - Multiple{" "}
           <Badge
+            className="ml-2 border-none bg-red-500/10 text-red-500"
             variant="outline"
-            className="text-red-500 bg-red-500/10 border-none ml-2"
           >
             <TrendingDown className="h-4 w-4" />
             <span>-5.2%</span>
@@ -58,25 +57,25 @@ export function GradientBarMultipleChart() {
         <ChartContainer config={chartConfig}>
           <BarChart accessibilityLayer data={chartData}>
             <XAxis
+              axisLine={false}
               dataKey="month"
+              tickFormatter={(value) => value.slice(0, 3)}
               tickLine={false}
               tickMargin={10}
-              axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
             />
             <ChartTooltip
+              content={<ChartTooltipContent hideLabel indicator="dashed" />}
               cursor={false}
-              content={<ChartTooltipContent indicator="dashed" hideLabel />}
             />
             <Bar
               dataKey="desktop"
-              shape={<CustomGradientBar />}
               fill="var(--color-desktop)"
+              shape={<CustomGradientBar />}
             />
             <Bar
               dataKey="mobile"
-              shape={<CustomGradientBar />}
               fill="var(--color-mobile)"
+              shape={<CustomGradientBar />}
             />
           </BarChart>
         </ChartContainer>
@@ -93,20 +92,20 @@ const CustomGradientBar = (
   return (
     <>
       <rect
-        x={x}
-        y={y}
-        width={width}
+        fill={`url(#gradient-multiple-bar-pattern-${dataKey})`}
         height={height}
         stroke="none"
-        fill={`url(#gradient-multiple-bar-pattern-${dataKey})`}
+        width={width}
+        x={x}
+        y={y}
       />
-      <rect x={x} y={y} width={width} height={2} stroke="none" fill={fill} />
+      <rect fill={fill} height={2} stroke="none" width={width} x={x} y={y} />
       <defs>
         <linearGradient
           id={`gradient-multiple-bar-pattern-${dataKey}`}
           x1="0"
-          y1="0"
           x2="0"
+          y1="0"
           y2="1"
         >
           <stop offset="0%" stopColor={fill} stopOpacity={0.5} />

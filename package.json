@@ -61,6 +61,7 @@
     "drizzle-orm": "^0.45.1",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
+    "lightweight-charts": "^5.1.0",
     "lucide-react": "^0.562.0",
     "motion": "^12.27.0",
     "next": "16.1.3",

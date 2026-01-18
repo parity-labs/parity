@@ -1,7 +1,8 @@
 "use client";
 
-import { LabelList, Pie, PieChart, Cell } from "recharts";
-
+import { TrendingDown } from "lucide-react";
+import { Cell, LabelList, Pie, PieChart } from "recharts";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -10,13 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
-import { TrendingDown } from "lucide-react";
 
 const chartData = [
   { browser: "chrome", visitors: 275, fill: "var(--color-chrome)" },
@@ -66,8 +65,8 @@ export function IncreaseSizePieChart() {
         <CardTitle>
           Sized Pie Chart
           <Badge
+            className="ml-2 border-none bg-red-500/10 text-red-500"
             variant="outline"
-            className="text-red-500 bg-red-500/10 border-none ml-2"
           >
             <TrendingDown className="h-4 w-4" />
             <span>5.2%</span>
@@ -77,29 +76,18 @@ export function IncreaseSizePieChart() {
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         <ChartContainer
+          className="mx-auto aspect-square max-h-[250px] [&_.recharts-text]:fill-background"
           config={chartConfig}
-          className="[&_.recharts-text]:fill-background mx-auto aspect-square max-h-[250px]"
         >
           <PieChart>
             <ChartTooltip
-              content={<ChartTooltipContent nameKey="visitors" hideLabel />}
+              content={<ChartTooltipContent hideLabel nameKey="visitors" />}
             />
             {sortedChartData.map((entry, index) => (
               <Pie
-                key={`pie-${index}`}
-                data={[entry]}
-                innerRadius={30}
-                outerRadius={BASE_RADIUS + index * SIZE_INCREMENT}
-                dataKey="visitors"
                 cornerRadius={4}
-                startAngle={
-                  // Calculate the percentage of total visitors up to current index
-                  (sortedChartData
-                    .slice(0, index)
-                    .reduce((sum, d) => sum + d.visitors, 0) /
-                    sortedChartData.reduce((sum, d) => sum + d.visitors, 0)) *
-                  360
-                }
+                data={[entry]}
+                dataKey="visitors"
                 endAngle={
                   // Calculate the percentage of total visitors up to and including current index
                   (sortedChartData
@@ -108,15 +96,26 @@ export function IncreaseSizePieChart() {
                     sortedChartData.reduce((sum, d) => sum + d.visitors, 0)) *
                   360
                 }
+                innerRadius={30}
+                key={`pie-${index}`}
+                outerRadius={BASE_RADIUS + index * SIZE_INCREMENT}
+                startAngle={
+                  // Calculate the percentage of total visitors up to current index
+                  (sortedChartData
+                    .slice(0, index)
+                    .reduce((sum, d) => sum + d.visitors, 0) /
+                    sortedChartData.reduce((sum, d) => sum + d.visitors, 0)) *
+                  360
+                }
               >
                 <Cell fill={entry.fill} />
                 <LabelList
                   dataKey="visitors"
-                  stroke="none"
+                  fill="currentColor"
                   fontSize={12}
                   fontWeight={500}
-                  fill="currentColor"
                   formatter={(value: number) => value.toString()}
+                  stroke="none"
                 />
               </Pie>
             ))}

@@ -1,7 +1,8 @@
 "use client";
 
+import { TrendingUp } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -10,14 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
-import { TrendingUp } from "lucide-react";
-import React from "react";
 
 const chartData = [
   { month: "January", desktop: 342, mobile: 245 },
@@ -52,8 +50,8 @@ export function DottedPatternAreaChart() {
         <CardTitle>
           Dotted Area Chart
           <Badge
+            className="ml-2 border-none bg-green-500/10 text-green-500"
             variant="outline"
-            className="text-green-500 bg-green-500/10 border-none ml-2"
           >
             <TrendingUp className="h-4 w-4" />
             <span>-5.2%</span>
@@ -66,35 +64,35 @@ export function DottedPatternAreaChart() {
       <CardContent>
         <ChartContainer config={chartConfig}>
           <AreaChart accessibilityLayer data={chartData}>
-            <CartesianGrid vertical={false} strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis
-              dataKey="month"
-              tickLine={false}
               axisLine={false}
-              tickMargin={8}
+              dataKey="month"
               tickFormatter={(value) => value.slice(0, 3)}
+              tickLine={false}
+              tickMargin={8}
             />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+            <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
             <defs>
               <DottedBackgroundPattern config={chartConfig} />
             </defs>
             <Area
               dataKey="mobile"
-              type="natural"
               fill="url(#dotted-background-pattern-mobile)"
               fillOpacity={0.4}
-              stroke="var(--color-mobile)"
               stackId="a"
+              stroke="var(--color-mobile)"
               strokeWidth={0.8}
+              type="natural"
             />
             <Area
               dataKey="desktop"
-              type="natural"
               fill="url(#dotted-background-pattern-desktop)"
               fillOpacity={0.4}
-              stroke="var(--color-desktop)"
               stackId="a"
+              stroke="var(--color-desktop)"
               strokeWidth={0.8}
+              type="natural"
             />
           </AreaChart>
         </ChartContainer>
@@ -111,15 +109,15 @@ const DottedBackgroundPattern = ({ config }: { config: ChartConfig }) => {
     <>
       {Object.entries(items).map(([key, value]) => (
         <pattern
-          key={key}
+          height="7"
           id={`dotted-background-pattern-${key}`}
+          key={key}
+          patternUnits="userSpaceOnUse"
+          width="7"
           x="0"
           y="0"
-          width="7"
-          height="7"
-          patternUnits="userSpaceOnUse"
         >
-          <circle cx="5" cy="5" r="1.5" fill={value} opacity={0.5}></circle>
+          <circle cx="5" cy="5" fill={value} opacity={0.5} r="1.5" />
         </pattern>
       ))}
     </>

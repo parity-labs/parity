@@ -1,9 +1,12 @@
 "use client";
 
+import { useMotionValueEvent, useSpring } from "framer-motion";
 import { TrendingUp } from "lucide-react";
-import { Bar, BarChart, Cell, XAxis, ReferenceLine } from "recharts";
-import React from "react";
 import { AnimatePresence } from "motion/react";
+import { JetBrains_Mono } from "next/font/google";
+import React from "react";
+import { Bar, BarChart, Cell, ReferenceLine, XAxis } from "recharts";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -11,11 +14,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ChartConfig, ChartContainer } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
+import { type ChartConfig, ChartContainer } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
-import { JetBrains_Mono } from "next/font/google";
-import { useMotionValueEvent, useSpring } from "framer-motion";
 
 const jetBrainsMono = JetBrains_Mono({
   subsets: ["latin"],
@@ -106,35 +106,35 @@ export function ValueLineBarChart() {
             <BarChart
               accessibilityLayer
               data={chartData}
-              onMouseLeave={() => setActiveIndex(undefined)}
               margin={{
                 left: CHART_MARGIN,
               }}
+              onMouseLeave={() => setActiveIndex(undefined)}
             >
               <XAxis
+                axisLine={false}
                 dataKey="month"
+                tickFormatter={(value) => value.slice(0, 3)}
                 tickLine={false}
                 tickMargin={10}
-                axisLine={false}
-                tickFormatter={(value) => value.slice(0, 3)}
               />
               <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4}>
                 {chartData.map((_, index) => (
                   <Cell
                     className="duration-200"
-                    opacity={index === maxValueIndex.index ? 1 : 0.2}
                     key={index}
                     onMouseEnter={() => setActiveIndex(index)}
+                    opacity={index === maxValueIndex.index ? 1 : 0.2}
                   />
                 ))}
               </Bar>
               <ReferenceLine
-                opacity={0.4}
-                y={springyValue}
-                stroke="var(--secondary-foreground)"
-                strokeWidth={1}
-                strokeDasharray="3 3"
                 label={<CustomReferenceLabel value={maxValueIndex.value} />}
+                opacity={0.4}
+                stroke="var(--secondary-foreground)"
+                strokeDasharray="3 3"
+                strokeWidth={1}
+                y={springyValue}
               />
             </BarChart>
           </ChartContainer>
@@ -167,18 +167,18 @@ const CustomReferenceLabel: React.FC<CustomReferenceLabelProps> = (props) => {
   return (
     <>
       <rect
+        fill="var(--secondary-foreground)"
+        height={18}
+        rx={4}
+        width={width}
         x={x - CHART_MARGIN}
         y={y - 9}
-        width={width}
-        height={18}
-        fill="var(--secondary-foreground)"
-        rx={4}
       />
       <text
+        fill="var(--primary-foreground)"
         fontWeight={600}
         x={x - CHART_MARGIN + 6}
         y={y + 4}
-        fill="var(--primary-foreground)"
       >
         {value}
       </text>

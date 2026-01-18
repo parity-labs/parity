@@ -2,6 +2,7 @@
 
 import { TrendingUp } from "lucide-react";
 import { Bar, BarChart, XAxis } from "recharts";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -10,12 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
 
 const chartData = [
   { month: "January", desktop: 342 },
@@ -46,8 +46,8 @@ export function GradientBarChart() {
         <CardTitle>
           Bar Chart
           <Badge
+            className="ml-2 border-none bg-green-500/10 text-green-500"
             variant="outline"
-            className="text-green-500 bg-green-500/10 border-none ml-2"
           >
             <TrendingUp className="h-4 w-4" />
             <span>5.2%</span>
@@ -59,20 +59,20 @@ export function GradientBarChart() {
         <ChartContainer config={chartConfig}>
           <BarChart accessibilityLayer data={chartData}>
             <XAxis
+              axisLine={false}
               dataKey="month"
+              tickFormatter={(value) => value.slice(0, 3)}
               tickLine={false}
               tickMargin={10}
-              axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
             />
             <ChartTooltip
-              cursor={false}
               content={<ChartTooltipContent hideLabel />}
+              cursor={false}
             />
             <Bar
-              shape={<CustomGradientBar />}
               dataKey="desktop"
               fill="var(--color-desktop)"
+              shape={<CustomGradientBar />}
             />
           </BarChart>
         </ChartContainer>
@@ -89,20 +89,20 @@ const CustomGradientBar = (
   return (
     <>
       <rect
-        x={x}
-        y={y}
-        width={width}
+        fill={`url(#gradient-bar-pattern-${dataKey})`}
         height={height}
         stroke="none"
-        fill={`url(#gradient-bar-pattern-${dataKey})`}
+        width={width}
+        x={x}
+        y={y}
       />
-      <rect x={x} y={y} width={width} height={2} stroke="none" fill={fill} />
+      <rect fill={fill} height={2} stroke="none" width={width} x={x} y={y} />
       <defs>
         <linearGradient
           id={`gradient-bar-pattern-${dataKey}`}
           x1="0"
-          y1="0"
           x2="0"
+          y1="0"
           y2="1"
         >
           <stop offset="0%" stopColor={fill} stopOpacity={0.5} />

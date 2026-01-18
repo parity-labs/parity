@@ -1,7 +1,8 @@
 "use client";
 
+import { TrendingDown } from "lucide-react";
 import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
-
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -10,13 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
-import { TrendingDown } from "lucide-react";
 
 const chartData = [
   { month: "January", desktop: 186, mobile: 87 },
@@ -45,8 +44,8 @@ export function DottedMultiLineChart() {
         <CardTitle>
           Multi Line Chart
           <Badge
+            className="ml-2 border-none bg-red-500/10 text-red-500"
             variant="outline"
-            className="text-red-500 bg-red-500/10 border-none ml-2"
           >
             <TrendingDown className="h-4 w-4" />
             <span>-5.2%</span>
@@ -66,24 +65,24 @@ export function DottedMultiLineChart() {
           >
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="month"
-              tickLine={false}
               axisLine={false}
-              tickMargin={8}
+              dataKey="month"
               tickFormatter={(value) => value.slice(0, 3)}
+              tickLine={false}
+              tickMargin={8}
             />
             <ChartTooltip
-              cursor={false}
               content={<ChartTooltipContent hideLabel />}
+              cursor={false}
             />
             <Line
               dataKey="desktop"
-              type="linear"
-              stroke="var(--color-desktop)"
               dot={false}
+              stroke="var(--color-desktop)"
               strokeDasharray="4 4"
+              type="linear"
             />
-            <Line dataKey="mobile" type="linear" stroke="var(--color-mobile)" />
+            <Line dataKey="mobile" stroke="var(--color-mobile)" type="linear" />
           </LineChart>
         </ChartContainer>
       </CardContent>

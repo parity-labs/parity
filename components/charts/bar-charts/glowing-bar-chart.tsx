@@ -1,8 +1,9 @@
 "use client";
 
 import { TrendingUp } from "lucide-react";
+import React from "react";
 import { Bar, BarChart, XAxis } from "recharts";
-
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -11,13 +12,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
-import React from "react";
 import {
   Select,
   SelectContent,
@@ -71,20 +70,20 @@ export function GlowingBarChart() {
           <CardTitle>
             Bar Chart
             <Badge
+              className="ml-2 border-none bg-green-500/10 text-green-500"
               variant="outline"
-              className="text-green-500 bg-green-500/10 border-none ml-2"
             >
               <TrendingUp className="h-4 w-4" />
               <span>5.2%</span>
             </Badge>
           </CardTitle>
           <Select
-            value={activeProperty}
             onValueChange={(value: ActiveProperty) => {
               setActiveProperty(value);
             }}
+            value={activeProperty}
           >
-            <SelectTrigger className="text-xs !h-6 !px-1.5">
+            <SelectTrigger className="!h-6 !px-1.5 text-xs">
               <SelectValue placeholder="Select a property" />
             </SelectTrigger>
             <SelectContent align="end">
@@ -112,45 +111,45 @@ export function GlowingBarChart() {
         <ChartContainer config={chartConfig}>
           <BarChart accessibilityLayer data={chartData}>
             <XAxis
+              axisLine={false}
               dataKey="month"
+              tickFormatter={(value) => value.slice(0, 3)}
               tickLine={false}
               tickMargin={10}
-              axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
             />
 
             <ChartTooltip
-              cursor={false}
               content={<ChartTooltipContent hideLabel />}
+              cursor={false}
             />
             <Bar
-              stackId="a"
+              background={{ fill: "currentColor", radius: 4 }}
               barSize={8}
-              className="dark:text-[#1A1A1C] text-[#E4E4E7]"
+              className="text-[#E4E4E7] dark:text-[#1A1A1C]"
               dataKey="mobile"
               fill="var(--color-mobile)"
-              radius={4}
-              shape={<CustomGradientBar activeProperty={activeProperty} />}
-              background={{ fill: "currentColor", radius: 4 }} // Only Top Bar will have background else it will give render errors
               overflow="visible"
+              radius={4}
+              shape={<CustomGradientBar activeProperty={activeProperty} />} // Only Top Bar will have background else it will give render errors
+              stackId="a"
             />
             <Bar
-              stackId="a"
               barSize={8}
-              shape={<CustomGradientBar activeProperty={activeProperty} />}
               dataKey="tablet"
               fill="var(--color-tablet)"
-              radius={4}
               overflow="visible"
+              radius={4}
+              shape={<CustomGradientBar activeProperty={activeProperty} />}
+              stackId="a"
             />
             <Bar
-              stackId="a"
               barSize={8}
-              shape={<CustomGradientBar activeProperty={activeProperty} />}
               dataKey="desktop"
               fill="var(--color-desktop)"
-              radius={4}
               overflow="visible"
+              radius={4}
+              shape={<CustomGradientBar activeProperty={activeProperty} />}
+              stackId="a"
             />
           </BarChart>
         </ChartContainer>
@@ -173,29 +172,29 @@ const CustomGradientBar = (
   return (
     <>
       <rect
-        x={x}
-        y={y}
-        rx={radius}
-        width={width}
-        height={height}
-        stroke="none"
         fill={fill}
-        opacity={isActive ? 1 : 0.1}
         filter={
           isActive && activeProperty !== "all"
             ? `url(#glow-chart-${dataKey})`
             : undefined
         }
+        height={height}
+        opacity={isActive ? 1 : 0.1}
+        rx={radius}
+        stroke="none"
+        width={width}
+        x={x}
+        y={y}
       />
       <defs>
         <filter
+          height="600%"
           id={`glow-chart-${dataKey}`}
+          width="600%"
           x="-200%"
           y="-200%"
-          width="600%"
-          height="600%"
         >
-          <feGaussianBlur stdDeviation="10" result="blur" />
+          <feGaussianBlur result="blur" stdDeviation="10" />
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
       </defs>

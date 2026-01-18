@@ -1,6 +1,8 @@
 "use client";
 
+import { TrendingUp } from "lucide-react";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart } from "recharts";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -9,13 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
-import { TrendingUp } from "lucide-react";
 
 const chartData = [
   { month: "January", desktop: 186, mobile: 92 },
@@ -50,8 +50,8 @@ export function StrokeMultipleRadarChart() {
         <CardTitle>
           Radar Chart
           <Badge
+            className="ml-2 border-none bg-green-500/10 text-green-500"
             variant="outline"
-            className="text-green-500 bg-green-500/10 border-none ml-2"
           >
             <TrendingUp className="h-4 w-4" />
             <span>5.2%</span>
@@ -63,24 +63,24 @@ export function StrokeMultipleRadarChart() {
       </CardHeader>
       <CardContent className="pb-0">
         <ChartContainer
-          config={chartConfig}
           className="mx-auto aspect-square max-h-[250px]"
+          config={chartConfig}
         >
           <RadarChart data={chartData}>
-            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+            <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
             <PolarAngleAxis dataKey="month" />
             <PolarGrid strokeDasharray="3 3" />
             <Radar
-              stroke="var(--color-desktop)"
               dataKey="desktop"
               fill="var(--color-desktop)"
               fillOpacity={0.1}
+              stroke="var(--color-desktop)"
             />
             <Radar
-              stroke="var(--color-mobile)"
               dataKey="mobile"
               fill="var(--color-mobile)"
               fillOpacity={0.1}
+              stroke="var(--color-mobile)"
             />
           </RadarChart>
         </ChartContainer>

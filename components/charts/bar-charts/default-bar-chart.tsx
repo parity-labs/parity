@@ -2,7 +2,7 @@
 
 import { TrendingUp } from "lucide-react";
 import { Bar, BarChart, XAxis } from "recharts";
-
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -11,12 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
 
 const chartData = [
   { month: "January", desktop: 342 },
@@ -47,8 +46,8 @@ export function DefaultBarChart() {
         <CardTitle>
           Bar Chart
           <Badge
+            className="ml-2 border-none bg-green-500/10 text-green-500"
             variant="outline"
-            className="text-green-500 bg-green-500/10 border-none ml-2"
           >
             <TrendingUp className="h-4 w-4" />
             <span>5.2%</span>
@@ -60,25 +59,25 @@ export function DefaultBarChart() {
         <ChartContainer config={chartConfig}>
           <BarChart accessibilityLayer data={chartData}>
             <rect
+              fill="url(#default-pattern-dots)"
+              height="85%"
+              width="100%"
               x="0"
               y="0"
-              width="100%"
-              height="85%"
-              fill="url(#default-pattern-dots)"
             />
             <defs>
               <DottedBackgroundPattern />
             </defs>
             <XAxis
+              axisLine={false}
               dataKey="month"
+              tickFormatter={(value) => value.slice(0, 3)}
               tickLine={false}
               tickMargin={10}
-              axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
             />
             <ChartTooltip
-              cursor={false}
               content={<ChartTooltipContent hideLabel />}
+              cursor={false}
             />
             <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4} />
           </BarChart>
@@ -91,19 +90,19 @@ export function DefaultBarChart() {
 const DottedBackgroundPattern = () => {
   return (
     <pattern
+      height="10"
       id="default-pattern-dots"
+      patternUnits="userSpaceOnUse"
+      width="10"
       x="0"
       y="0"
-      width="10"
-      height="10"
-      patternUnits="userSpaceOnUse"
     >
       <circle
-        className="dark:text-muted/40 text-muted"
+        className="text-muted dark:text-muted/40"
         cx="2"
         cy="2"
-        r="1"
         fill="currentColor"
+        r="1"
       />
     </pattern>
   );

@@ -1,9 +1,11 @@
 "use client";
 
 import { TrendingUp } from "lucide-react";
-import { Bar, BarChart, XAxis } from "recharts";
-import React, { SVGProps } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { JetBrains_Mono } from "next/font/google";
+import React, { type SVGProps } from "react";
+import { Bar, BarChart, XAxis } from "recharts";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -11,10 +13,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ChartConfig, ChartContainer } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
+import { type ChartConfig, ChartContainer } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
-import { JetBrains_Mono } from "next/font/google";
 
 const jetBrainsMono = JetBrains_Mono({
   subsets: ["latin"],
@@ -82,22 +82,22 @@ export function MonochromeBarChart() {
               onMouseLeave={() => setActiveIndex(undefined)}
             >
               <XAxis
+                axisLine={false}
                 dataKey="month"
+                tickFormatter={(value) => value.slice(0, 3)}
                 tickLine={false}
                 tickMargin={10}
-                axisLine={false}
-                tickFormatter={(value) => value.slice(0, 3)}
               />
               <Bar
                 dataKey="desktop"
                 fill="var(--secondary-foreground)"
                 shape={
                   <CustomBar
-                    setActiveIndex={setActiveIndex}
                     activeIndex={activeIndex}
+                    setActiveIndex={setActiveIndex}
                   />
                 }
-              ></Bar>
+              />
             </BarChart>
           </ChartContainer>
         </AnimatePresence>
@@ -130,35 +130,35 @@ const CustomBar = (props: CustomBarProps) => {
     <g onMouseEnter={() => props.setActiveIndex(index)}>
       {/* rendering the bar with custom postion and animated width */}
       <motion.rect
+        animate={{ width: isActive ? realWidth : collapsedWidth, x: barX }}
+        fill={fill}
+        height={height}
+        initial={{ width: collapsedWidth, x: barX }}
         style={{
           willChange: "transform, width", // helps with performance
         }}
-        y={y}
-        initial={{ width: collapsedWidth, x: barX }}
-        animate={{ width: isActive ? realWidth : collapsedWidth, x: barX }}
         transition={{
           duration: activeIndex === index ? 0.5 : 1,
           type: "spring",
         }}
-        height={height}
-        fill={fill}
+        y={y}
       />
       {/* Render value text on top of bar */}
       {isActive && (
         <motion.text
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          className={jetBrainsMono.className}
+          exit={{ opacity: 0, y: -10, filter: "blur(3px)" }}
+          fill={fill}
+          initial={{ opacity: 0, y: -10, filter: "blur(3px)" }}
+          key={index}
           style={{
             willChange: "transform, opacity", // helps with performance
           }}
-          className={jetBrainsMono.className}
-          key={index}
-          initial={{ opacity: 0, y: -10, filter: "blur(3px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          exit={{ opacity: 0, y: -10, filter: "blur(3px)" }}
+          textAnchor="middle"
           transition={{ duration: 0.1 }}
           x={textX}
           y={Number(y) - 5}
-          textAnchor="middle"
-          fill={fill}
         >
           {value}
         </motion.text>

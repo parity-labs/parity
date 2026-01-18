@@ -1,8 +1,8 @@
+import type React from "react";
 import { Button } from "@/components/ui/button";
 import CopyButton from "@/components/ui/code-block/copy-button";
-import React from "react";
-import { ChartCodeSheet } from "./chart-code-sheet";
 import { cn } from "@/lib/utils";
+import { ChartCodeSheet } from "./chart-code-sheet";
 
 interface ChartDisplayProps {
   name: string;
@@ -22,27 +22,27 @@ const ChartDisplay = ({
   const fileName = jsonContent?.name;
 
   // if things are not present just dont showwwwe eeee yes lesgo
-  if (!code || !fileName) {
+  if (!(code && fileName)) {
     return null;
   }
 
   return (
     <div
       className={cn(
-        "bg-border/40 p-1 rounded-[14px] group dark:shadow-md",
+        "group rounded-[14px] bg-border/40 p-1 dark:shadow-md",
         className
       )}
     >
-      <div className="pb-1.5 py-1 pl-3 pr-2 flex items-center justify-between">
+      <div className="flex items-center justify-between py-1 pr-2 pb-1.5 pl-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground font-medium leading-none">
+          <span className="font-medium text-muted-foreground text-xs leading-none">
             {name}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <CopyButton code={code} />
           <ChartCodeSheet code={code} name={fileName}>
-            <Button variant="outline" className="text-[11px] h-6 px-2">
+            <Button className="h-6 px-2 text-[11px]" variant="outline">
               npx shadcn add
             </Button>
           </ChartCodeSheet>

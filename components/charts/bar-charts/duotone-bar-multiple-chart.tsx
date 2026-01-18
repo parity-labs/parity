@@ -1,6 +1,8 @@
 "use client";
 
+import { TrendingDown } from "lucide-react";
 import { Bar, BarChart, XAxis } from "recharts";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -9,13 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
-import { TrendingDown } from "lucide-react";
 
 const chartData = [
   { month: "January", desktop: 186, mobile: 80 },
@@ -44,8 +44,8 @@ export function DuotoneBarMultipleChart() {
         <CardTitle>
           Bar Chart - Multiple
           <Badge
+            className="ml-2 border-none bg-red-500/10 text-red-500"
             variant="outline"
-            className="text-red-500 bg-red-500/10 border-none ml-2"
           >
             <TrendingDown className="h-4 w-4" />
             <span>-5.2%</span>
@@ -57,38 +57,38 @@ export function DuotoneBarMultipleChart() {
         <ChartContainer config={chartConfig}>
           <BarChart accessibilityLayer data={chartData}>
             <rect
+              fill="url(#default-multiple-pattern-dots)"
+              height="85%"
+              width="100%"
               x="0"
               y="0"
-              width="100%"
-              height="85%"
-              fill="url(#default-multiple-pattern-dots)"
             />
             <defs>
               <DottedBackgroundPattern />
             </defs>
             <XAxis
+              axisLine={false}
               dataKey="month"
+              tickFormatter={(value) => value.slice(0, 3)}
               tickLine={false}
               tickMargin={10}
-              axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
             />
             <ChartTooltip
+              content={<ChartTooltipContent hideLabel indicator="dashed" />}
               cursor={false}
-              content={<ChartTooltipContent indicator="dashed" hideLabel />}
             />
             <Bar
-              dataKey="desktop"
               color="var(--chart-1)"
+              dataKey="desktop"
               fill="var(--color-desktop)"
-              shape={<CustomDuotoneBarMultiple />}
               radius={4}
+              shape={<CustomDuotoneBarMultiple />}
             />
             <Bar
               dataKey="mobile"
               fill="var(--color-mobile)"
-              shape={<CustomDuotoneBarMultiple />}
               radius={4}
+              shape={<CustomDuotoneBarMultiple />}
             />
           </BarChart>
         </ChartContainer>
@@ -105,21 +105,21 @@ const CustomDuotoneBarMultiple = (
   return (
     <>
       <rect
+        fill={`url(#duotone-bar-pattern-${dataKey})`}
+        height={height}
         rx={4}
+        stroke="none"
+        width={width}
         x={x}
         y={y}
-        width={width}
-        height={height}
-        stroke="none"
-        fill={`url(#duotone-bar-pattern-${dataKey})`}
       />
       <defs>
         <linearGradient
-          key={dataKey}
           id={`duotone-bar-pattern-${dataKey}`}
+          key={dataKey}
           x1="0"
-          y1="0"
           x2="1"
+          y1="0"
           y2="0"
         >
           <stop offset="50%" stopColor={fill} stopOpacity={0.5} />
@@ -133,19 +133,19 @@ const CustomDuotoneBarMultiple = (
 const DottedBackgroundPattern = () => {
   return (
     <pattern
+      height="10"
       id="default-multiple-pattern-dots"
+      patternUnits="userSpaceOnUse"
+      width="10"
       x="0"
       y="0"
-      width="10"
-      height="10"
-      patternUnits="userSpaceOnUse"
     >
       <circle
-        className="dark:text-muted/40 text-muted"
+        className="text-muted dark:text-muted/40"
         cx="2"
         cy="2"
-        r="1"
         fill="currentColor"
+        r="1"
       />
     </pattern>
   );

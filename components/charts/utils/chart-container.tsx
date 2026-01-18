@@ -1,5 +1,5 @@
+import type React from "react";
 import { cn } from "@/lib/utils";
-import React from "react";
 
 const DisplayChartContainer = ({
   count = 2,
@@ -12,15 +12,15 @@ const DisplayChartContainer = ({
 }) => {
   return (
     <div
+      className={cn(
+        "grid grid-cols-1 gap-4 sm:grid-cols-[repeat(var(--chart-count),minmax(0,1fr))]",
+        className
+      )}
       style={
         {
           "--chart-count": count,
         } as React.CSSProperties
       }
-      className={cn(
-        "grid gap-4 grid-cols-1 sm:grid-cols-[repeat(var(--chart-count),minmax(0,1fr))]",
-        className
-      )}
     >
       {children}
     </div>

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getOHLCVData } from "@/lib/geckoterminal";
 import {
   buildSwapTransaction,
   getPoolPriceData,
@@ -74,5 +75,25 @@ export const poolRouter = {
         slippageBps: input.slippageBps,
       });
       return result;
+    }),
+
+  /** Get OHLCV candlestick data from GeckoTerminal */
+  ohlcv: publicProcedure
+    .input(
+      z.object({
+        poolAddress: solanaAddressSchema,
+        timeframe: z.enum(["minute", "hour", "day"]).default("hour"),
+        aggregate: z.number().min(1).max(60).default(1),
+        limit: z.number().min(1).max(1000).default(100),
+      })
+    )
+    .handler(async ({ input }) => {
+      const data = await getOHLCVData(
+        input.poolAddress,
+        input.timeframe,
+        input.aggregate,
+        input.limit
+      );
+      return { candles: data };
     }),
 };

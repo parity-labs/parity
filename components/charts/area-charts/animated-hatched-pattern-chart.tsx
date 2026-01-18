@@ -1,7 +1,9 @@
 "use client";
 
+import { TrendingUp } from "lucide-react";
+import React from "react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -10,14 +12,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
-import { TrendingUp } from "lucide-react";
-import React from "react";
 
 const chartData = [
   { month: "January", desktop: 342, mobile: 245 },
@@ -57,8 +56,8 @@ export function AnimatedHatchedPatternAreaChart() {
         <CardTitle>
           Hatched Area Chart
           <Badge
+            className="ml-2 border-none bg-green-500/10 text-green-500"
             variant="outline"
-            className="text-green-500 bg-green-500/10 border-none ml-2"
           >
             <TrendingUp className="h-4 w-4" />
             <span>5.2%</span>
@@ -71,22 +70,22 @@ export function AnimatedHatchedPatternAreaChart() {
       <CardContent>
         <ChartContainer config={chartConfig}>
           <AreaChart accessibilityLayer data={chartData}>
-            <CartesianGrid vertical={false} strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis
-              dataKey="month"
-              tickLine={false}
               axisLine={false}
-              tickMargin={8}
+              dataKey="month"
               tickFormatter={(value) => value.slice(0, 3)}
+              tickLine={false}
+              tickMargin={8}
             />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+            <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
             <defs>
               <HatchedBackgroundPattern config={chartConfig} />
               <linearGradient
                 id="hatched-background-pattern-grad-desktop"
                 x1="0"
-                y1="0"
                 x2="0"
+                y1="0"
                 y2="1"
               >
                 <stop
@@ -103,8 +102,8 @@ export function AnimatedHatchedPatternAreaChart() {
               <linearGradient
                 id="hatched-background-pattern-grad-mobile"
                 x1="0"
-                y1="0"
                 x2="0"
+                y1="0"
                 y2="1"
               >
                 <stop
@@ -120,34 +119,34 @@ export function AnimatedHatchedPatternAreaChart() {
               </linearGradient>
             </defs>
             <Area
-              onMouseEnter={() => setActiveProperty("mobile")}
-              onMouseLeave={() => setActiveProperty(null)}
               dataKey="mobile"
-              type="natural"
               fill={
                 activeProperty === "mobile"
                   ? "url(#hatched-background-pattern-mobile)"
                   : "url(#hatched-background-pattern-grad-mobile)"
               }
               fillOpacity={0.4}
-              stroke="var(--color-mobile)"
+              onMouseEnter={() => setActiveProperty("mobile")}
+              onMouseLeave={() => setActiveProperty(null)}
               stackId="a"
+              stroke="var(--color-mobile)"
               strokeWidth={0.8}
+              type="natural"
             />
             <Area
-              onMouseEnter={() => setActiveProperty("desktop")}
-              onMouseLeave={() => setActiveProperty(null)}
               dataKey="desktop"
-              type="natural"
               fill={
                 activeProperty === "desktop"
                   ? "url(#hatched-background-pattern-desktop)"
                   : "url(#hatched-background-pattern-grad-desktop)"
               }
               fillOpacity={0.4}
-              stroke="var(--color-desktop)"
+              onMouseEnter={() => setActiveProperty("desktop")}
+              onMouseLeave={() => setActiveProperty(null)}
               stackId="a"
+              stroke="var(--color-desktop)"
               strokeWidth={0.8}
+              type="natural"
             />
           </AreaChart>
         </ChartContainer>
@@ -164,27 +163,27 @@ const HatchedBackgroundPattern = ({ config }: { config: ChartConfig }) => {
     <>
       {Object.entries(items).map(([key, value]) => (
         <pattern
-          key={key}
+          height="6.81"
           id={`hatched-background-pattern-${key}`}
+          key={key}
+          overflow="visible"
+          patternTransform="rotate(-45)"
+          patternUnits="userSpaceOnUse"
+          width="6.81"
           x="0"
           y="0"
-          width="6.81"
-          height="6.81"
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(-45)"
-          overflow="visible"
         >
-          <g overflow="visible" className="will-change-transform">
+          <g className="will-change-transform" overflow="visible">
             <animateTransform
               attributeName="transform"
-              type="translate"
-              from="0 0"
-              to="6 0"
               dur="1s"
+              from="0 0"
               repeatCount="indefinite"
+              to="6 0"
+              type="translate"
             />
-            <rect width="10" height="10" opacity={0.05} fill={value} />
-            <rect width="1" height="10" fill={value} />
+            <rect fill={value} height="10" opacity={0.05} width="10" />
+            <rect fill={value} height="10" width="1" />
           </g>
         </pattern>
       ))}

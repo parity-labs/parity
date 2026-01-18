@@ -1,7 +1,8 @@
 "use client";
 
+import { TrendingDown } from "lucide-react";
 import { Bar, BarChart, XAxis } from "recharts";
-
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -10,13 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
-import { TrendingDown } from "lucide-react";
 
 const chartData = [
   { month: "January", desktop: 186, mobile: 80 },
@@ -45,8 +44,8 @@ export function HatchedBarMultipleChart() {
         <CardTitle>
           Bar Chart - Multiple
           <Badge
+            className="ml-2 border-none bg-red-500/10 text-red-500"
             variant="outline"
-            className="text-red-500 bg-red-500/10 border-none ml-2"
           >
             <TrendingDown className="h-4 w-4" />
             <span>-5.2%</span>
@@ -58,38 +57,38 @@ export function HatchedBarMultipleChart() {
         <ChartContainer config={chartConfig}>
           <BarChart accessibilityLayer data={chartData}>
             <rect
+              fill="url(#default-multiple-pattern-dots)"
+              height="85%"
+              width="100%"
               x="0"
               y="0"
-              width="100%"
-              height="85%"
-              fill="url(#default-multiple-pattern-dots)"
             />
             <defs>
               <DottedBackgroundPattern />
             </defs>
             <XAxis
+              axisLine={false}
               dataKey="month"
+              tickFormatter={(value) => value.slice(0, 3)}
               tickLine={false}
               tickMargin={10}
-              axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
             />
             <ChartTooltip
+              content={<ChartTooltipContent hideLabel indicator="dashed" />}
               cursor={false}
-              content={<ChartTooltipContent indicator="dashed" hideLabel />}
             />
             <Bar
-              dataKey="desktop"
               color="var(--chart-1)"
+              dataKey="desktop"
               fill="var(--color-desktop)"
-              shape={<CustomHatchedBar isHatched={false} />}
               radius={4}
+              shape={<CustomHatchedBar isHatched={false} />}
             />
             <Bar
               dataKey="mobile"
               fill="var(--color-mobile)"
-              shape={<CustomHatchedBar />}
               radius={4}
+              shape={<CustomHatchedBar />}
             />
           </BarChart>
         </ChartContainer>
@@ -111,27 +110,27 @@ const CustomHatchedBar = (
   return (
     <>
       <rect
+        fill={isHatched ? `url(#hatched-bar-pattern-${dataKey})` : fill}
+        height={height}
         rx={4}
+        stroke="none"
+        width={width}
         x={x}
         y={y}
-        width={width}
-        height={height}
-        stroke="none"
-        fill={isHatched ? `url(#hatched-bar-pattern-${dataKey})` : fill}
       />
       <defs>
         <pattern
-          key={dataKey}
+          height="5"
           id={`hatched-bar-pattern-${dataKey}`}
+          key={dataKey}
+          patternTransform="rotate(-45)"
+          patternUnits="userSpaceOnUse"
+          width="5"
           x="0"
           y="0"
-          width="5"
-          height="5"
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(-45)"
         >
-          <rect width="10" height="10" opacity={0.5} fill={fill}></rect>
-          <rect width="1" height="10" fill={fill}></rect>
+          <rect fill={fill} height="10" opacity={0.5} width="10" />
+          <rect fill={fill} height="10" width="1" />
         </pattern>
       </defs>
     </>
@@ -140,19 +139,19 @@ const CustomHatchedBar = (
 const DottedBackgroundPattern = () => {
   return (
     <pattern
+      height="10"
       id="default-multiple-pattern-dots"
+      patternUnits="userSpaceOnUse"
+      width="10"
       x="0"
       y="0"
-      width="10"
-      height="10"
-      patternUnits="userSpaceOnUse"
     >
       <circle
-        className="dark:text-muted/40 text-muted"
+        className="text-muted dark:text-muted/40"
         cx="2"
         cy="2"
-        r="1"
         fill="currentColor"
+        r="1"
       />
     </pattern>
   );

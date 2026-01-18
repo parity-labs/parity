@@ -27,9 +27,9 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
-  generateMockPriceData,
-  TokenPriceChart,
-} from "@/components/charts/token-price-chart";
+  CandlestickChart,
+  generateMockCandlestickData,
+} from "@/components/charts/candlestick-chart";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -354,15 +354,32 @@ export default function LaunchDetailPage() {
     staleTime: 5000,
   });
 
-  // Generate mock chart data based on current price
-  const chartData = priceData
-    ? generateMockPriceData(priceData.spotPrice, 24)
+  // Fetch real OHLCV data from GeckoTerminal
+  const { data: ohlcvData } = useQuery({
+    queryKey: ["pool-ohlcv", launch?.poolAddress],
+    queryFn: () =>
+      launch?.poolAddress
+        ? rpc.pool.ohlcv({
+            poolAddress: launch.poolAddress,
+            timeframe: "hour",
+            limit: 48,
+          })
+        : null,
+    enabled: !!launch?.poolAddress && launch.status === "active",
+    refetchInterval: 60_000, // Refresh every minute
+    staleTime: 30_000,
+  });
+
+  const realCandles = ohlcvData?.candles ?? [];
+  const mockCandles = priceData
+    ? generateMockCandlestickData(priceData.spotPrice, 48)
     : [];
-  const lastPrice = chartData.at(-1);
-  const firstPrice = chartData.at(0);
+  const chartData = realCandles.length > 0 ? realCandles : mockCandles;
+  const lastCandle = chartData.at(-1);
+  const firstCandle = chartData.at(0);
   const priceChange =
-    lastPrice && firstPrice
-      ? ((lastPrice.price - firstPrice.price) / firstPrice.price) * 100
+    lastCandle && firstCandle
+      ? ((lastCandle.close - firstCandle.open) / firstCandle.open) * 100
       : 0;
 
   const deleteMutation = useMutation({
@@ -590,7 +607,7 @@ export default function LaunchDetailPage() {
               </div>
 
               {/* Chart */}
-              <TokenPriceChart data={chartData} priceChange={priceChange} />
+              <CandlestickChart data={chartData} />
 
               {/* Live indicator */}
               <div className="mt-4 flex items-center gap-2 text-muted-foreground text-xs">

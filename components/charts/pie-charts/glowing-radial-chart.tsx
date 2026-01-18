@@ -1,6 +1,6 @@
 "use client";
-import { RadialBar, RadialBarChart, Cell } from "recharts";
 import React from "react";
+import { Cell, RadialBar, RadialBarChart } from "recharts";
 import {
   Card,
   CardContent,
@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -57,57 +57,63 @@ export function GlowingRadialChart() {
   return (
     <Card className="flex flex-col">
       <CardHeader className="items-center pb-0">
-        <CardTitle>
-          Glowing Radial Chart
-        </CardTitle>
+        <CardTitle>Glowing Radial Chart</CardTitle>
         <CardDescription>January - June 2024</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         <ChartContainer
-          config={chartConfig}
           className="mx-auto aspect-square max-h-[250px]"
+          config={chartConfig}
         >
-          <RadialBarChart 
-            data={chartData} 
-            innerRadius={30} 
-            outerRadius={110}
+          <RadialBarChart
+            data={chartData}
+            innerRadius={30}
+            onMouseLeave={() => setActiveBrowser(null)}
             onMouseMove={(data) => {
               if (data && data.activePayload && data.activePayload[0]) {
                 setActiveBrowser(data.activePayload[0].payload.browser);
               }
             }}
-            onMouseLeave={() => setActiveBrowser(null)}
+            outerRadius={110}
           >
             <ChartTooltip
-              cursor={false}
               content={<ChartTooltipContent hideLabel nameKey="browser" />}
+              cursor={false}
             />
             <RadialBar
-              cornerRadius={10}
-              dataKey="visitors"
               background
               className="drop-shadow-lg"
+              cornerRadius={10}
+              dataKey="visitors"
             >
               {chartData.map((entry, index) => (
-                <Cell 
-                  key={`cell-${index}`} 
+                <Cell
                   fill={entry.fill}
-                  filter={activeBrowser === entry.browser ? `url(#radial-glow-${entry.browser})` : undefined}
-                  opacity={activeBrowser === null || activeBrowser === entry.browser ? 1 : 0.3}
+                  filter={
+                    activeBrowser === entry.browser
+                      ? `url(#radial-glow-${entry.browser})`
+                      : undefined
+                  }
+                  key={`cell-${index}`}
+                  opacity={
+                    activeBrowser === null || activeBrowser === entry.browser
+                      ? 1
+                      : 0.3
+                  }
                 />
               ))}
             </RadialBar>
             <defs>
               {chartData.map((entry) => (
                 <filter
-                  key={`filter-${entry.browser}`}
+                  height="200%"
                   id={`radial-glow-${entry.browser}`}
+                  key={`filter-${entry.browser}`}
+                  width="200%"
                   x="-50%"
                   y="-50%"
-                  width="200%"
-                  height="200%"
                 >
-                  <feGaussianBlur stdDeviation="8" result="blur" />
+                  <feGaussianBlur result="blur" stdDeviation="8" />
                   <feComposite in="SourceGraphic" in2="blur" operator="over" />
                 </filter>
               ))}

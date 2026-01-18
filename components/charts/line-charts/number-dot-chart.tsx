@@ -1,7 +1,8 @@
 "use client";
 
+import { TrendingDown } from "lucide-react";
 import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
-
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -10,13 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
-import { TrendingDown } from "lucide-react";
 
 const chartData = [
   { month: "January", desktop: 186 },
@@ -41,8 +40,8 @@ export function NumberDotLineChart() {
         <CardTitle>
           Number Dot Chart
           <Badge
+            className="ml-2 border-none bg-red-500/10 text-red-500"
             variant="outline"
-            className="text-red-500 bg-red-500/10 border-none ml-2"
           >
             <TrendingDown className="h-4 w-4" />
             <span>-5.2%</span>
@@ -62,24 +61,24 @@ export function NumberDotLineChart() {
           >
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="month"
-              tickLine={false}
               axisLine={false}
-              tickMargin={8}
+              dataKey="month"
               tickFormatter={(value) => value.slice(0, 3)}
+              tickLine={false}
+              tickMargin={8}
             />
             <ChartTooltip
+              content={<ChartTooltipContent hideLabel />}
               cursor={false}
               cursorStyle={{}}
-              content={<ChartTooltipContent hideLabel />}
             />
             <Line
+              activeDot={() => <></>}
               dataKey="desktop"
-              type="linear"
+              dot={<CustomizedDot />}
               stroke="var(--color-desktop)"
               strokeDasharray="4 4"
-              dot={<CustomizedDot />}
-              activeDot={() => <></>}
+              type="linear"
             />
           </LineChart>
         </ChartContainer>
@@ -96,17 +95,17 @@ const CustomizedDot = (
   return (
     <g>
       {/* Main dot */}
-      <circle cx={cx} cy={cy} r={9} fill={stroke} />
+      <circle cx={cx} cy={cy} fill={stroke} r={9} />
       <text
-        className="dark:text-black text-white"
-        x={cx}
-        y={cy}
-        textAnchor="middle"
+        className="text-white dark:text-black"
         dy={8}
+        fill="currentColor"
         fontSize={8}
         fontWeight={600}
-        fill="currentColor"
+        textAnchor="middle"
         transform="translate(0, -5)"
+        x={cx}
+        y={cy}
       >
         {value?.toString()}
       </text>

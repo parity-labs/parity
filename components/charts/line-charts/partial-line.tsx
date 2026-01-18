@@ -1,7 +1,9 @@
 "use client";
 
-import { CartesianGrid, Line, LineChart, XAxis, Customized } from "recharts";
+import { TrendingUp } from "lucide-react";
 import { useCallback, useState } from "react";
+import { CartesianGrid, Customized, Line, LineChart, XAxis } from "recharts";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -10,13 +12,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
-import { TrendingUp } from "lucide-react";
 
 const chartData = [
   { month: "January", desktop: 345, mobile: 210 },
@@ -55,8 +55,8 @@ export function PartialLineChart() {
         <CardTitle>
           Partial Line Chart
           <Badge
+            className="ml-2 border-none bg-green-500/10 text-green-500"
             variant="outline"
-            className="text-green-500 bg-green-500/10 border-none ml-2"
           >
             <TrendingUp className="h-4 w-4" />
             <span>5.2%</span>
@@ -76,30 +76,30 @@ export function PartialLineChart() {
           >
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="month"
-              tickLine={false}
               axisLine={false}
-              tickMargin={8}
+              dataKey="month"
               tickFormatter={(value) => value.slice(0, 3)}
+              tickLine={false}
+              tickMargin={8}
             />
             <ChartTooltip
-              cursor={false}
               content={<ChartTooltipContent hideLabel />}
+              cursor={false}
             />
             {Object.entries(chartConfig).map(([key, value]) => (
               <Line
-                key={key}
                 dataKey={key}
-                type="linear"
-                stroke={value.color}
                 dot={{
                   r: 2.5,
                   fill: value.color,
                 }}
+                key={key}
+                stroke={value.color}
                 strokeDasharray={
                   lineDasharrays.find((line) => line.name === key)
                     ?.strokeDasharray || "0 0"
                 }
+                type="linear"
               />
             ))}
             <Customized component={DasharrayCalculator} />
@@ -158,7 +158,7 @@ export function useDynamicDasharray({
   curveAdjustment = 1,
 }: UseDynamicDasharrayProps): [
   (props: CustomizedChartProps) => null,
-  LineDasharray
+  LineDasharray,
 ] {
   const [lineDasharrays, setLineDasharrays] = useState<LineDasharray>([]);
 
@@ -195,7 +195,7 @@ export function useDynamicDasharray({
         const dashedSegment = points?.slice(lineSplitIndex);
         const dashedLength = calculatePathLength(dashedSegment || []);
 
-        if (!totalLength || !dashedLength) return;
+        if (!(totalLength && dashedLength)) return;
 
         const solidLength = totalLength - dashedLength;
         const curveCorrectionFactor =

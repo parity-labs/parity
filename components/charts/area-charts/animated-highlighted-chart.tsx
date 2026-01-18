@@ -1,7 +1,9 @@
 "use client";
 
+import { TrendingDown } from "lucide-react";
+import React from "react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -10,14 +12,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
-import { TrendingDown } from "lucide-react";
-import React from "react";
 
 // Change it to your needs
 const animationConfig = {
@@ -59,8 +58,8 @@ export function AnimatedHighlightedAreaChart() {
         <CardTitle>
           Highlighted Area Chart
           <Badge
+            className="ml-2 border-none bg-red-500/10 text-red-500"
             variant="outline"
-            className="text-red-500 bg-red-500/10 border-none ml-2"
           >
             <TrendingDown className="h-4 w-4" />
             <span>-5.2%</span>
@@ -75,24 +74,24 @@ export function AnimatedHighlightedAreaChart() {
           <AreaChart
             accessibilityLayer
             data={chartData}
-            onMouseMove={(e) => setXAxis(e.chartX as number)}
             onMouseLeave={() => setXAxis(null)}
+            onMouseMove={(e) => setXAxis(e.chartX as number)}
           >
-            <CartesianGrid vertical={false} strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis
-              dataKey="month"
-              tickLine={false}
               axisLine={false}
-              tickMargin={8}
+              dataKey="month"
               tickFormatter={(value) => value.slice(0, 3)}
+              tickLine={false}
+              tickMargin={8}
             />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+            <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
             <defs>
               <linearGradient
                 id="animated-highlighted-mask-grad"
                 x1="0"
-                y1="0"
                 x2="1"
+                y1="0"
                 y2="0"
               >
                 <stop offset="0%" stopColor="transparent" />
@@ -102,8 +101,8 @@ export function AnimatedHighlightedAreaChart() {
               <linearGradient
                 id="animated-highlighted-grad-desktop"
                 x1="0"
-                y1="0"
                 x2="0"
+                y1="0"
                 y2="1"
               >
                 <stop
@@ -120,8 +119,8 @@ export function AnimatedHighlightedAreaChart() {
               <linearGradient
                 id="animated-highlighted-grad-mobile"
                 x1="0"
-                y1="0"
                 x2="0"
+                y1="0"
                 y2="1"
               >
                 <stop
@@ -138,34 +137,34 @@ export function AnimatedHighlightedAreaChart() {
               {xAxis && (
                 <mask id="animated-highlighted-mask">
                   <rect
+                    fill="url(#animated-highlighted-mask-grad)"
+                    height="100%"
+                    width={animationConfig.glowWidth}
                     x={xAxis - animationConfig.glowWidth / 2}
                     y={0}
-                    width={animationConfig.glowWidth}
-                    height="100%"
-                    fill="url(#animated-highlighted-mask-grad)"
                   />
                 </mask>
               )}
             </defs>
             <Area
               dataKey="mobile"
-              type="natural"
               fill={"url(#animated-highlighted-grad-mobile)"}
               fillOpacity={0.4}
-              stroke="var(--color-mobile)"
-              stackId="a"
-              strokeWidth={0.8}
               mask="url(#animated-highlighted-mask)"
+              stackId="a"
+              stroke="var(--color-mobile)"
+              strokeWidth={0.8}
+              type="natural"
             />
             <Area
               dataKey="desktop"
-              type="natural"
               fill={"url(#animated-highlighted-grad-desktop)"}
               fillOpacity={0.4}
-              stroke="var(--color-desktop)"
-              stackId="a"
-              strokeWidth={0.8}
               mask="url(#animated-highlighted-mask)"
+              stackId="a"
+              stroke="var(--color-desktop)"
+              strokeWidth={0.8}
+              type="natural"
             />
           </AreaChart>
         </ChartContainer>

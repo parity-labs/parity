@@ -1,7 +1,8 @@
 "use client";
 
+import { TrendingUp } from "lucide-react";
 import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
-
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -10,13 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Badge } from "@/components/ui/badge";
-import { TrendingUp } from "lucide-react";
 
 const chartData = [
   { month: "January", desktop: 186, mobile: 87 },
@@ -45,8 +44,8 @@ export function GlowingLineChart() {
         <CardTitle>
           Glowing Line Chart
           <Badge
+            className="ml-2 border-none bg-green-500/10 text-green-500"
             variant="outline"
-            className="text-green-500 bg-green-500/10 border-none ml-2"
           >
             <TrendingUp className="h-4 w-4" />
             <span>5.2%</span>
@@ -66,41 +65,41 @@ export function GlowingLineChart() {
           >
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="month"
-              tickLine={false}
               axisLine={false}
-              tickMargin={8}
+              dataKey="month"
               tickFormatter={(value) => value.slice(0, 3)}
+              tickLine={false}
+              tickMargin={8}
             />
             <ChartTooltip
-              cursor={false}
               content={<ChartTooltipContent hideLabel />}
+              cursor={false}
             />
             <Line
               dataKey="desktop"
-              type="bump"
-              stroke="var(--chart-2)"
               dot={false}
-              strokeWidth={2}
               filter="url(#rainbow-line-glow)"
+              stroke="var(--chart-2)"
+              strokeWidth={2}
+              type="bump"
             />
             <Line
               dataKey="mobile"
-              type="bump"
-              stroke="var(--chart-5)"
               dot={false}
-              strokeWidth={2}
               filter="url(#rainbow-line-glow)"
+              stroke="var(--chart-5)"
+              strokeWidth={2}
+              type="bump"
             />
             <defs>
               <filter
+                height="140%"
                 id="rainbow-line-glow"
+                width="140%"
                 x="-20%"
                 y="-20%"
-                width="140%"
-                height="140%"
               >
-                <feGaussianBlur stdDeviation="10" result="blur" />
+                <feGaussianBlur result="blur" stdDeviation="10" />
                 <feComposite in="SourceGraphic" in2="blur" operator="over" />
               </filter>
             </defs>

@@ -26,14 +26,14 @@ export function ChartCodeSheet({
     <Sheet>
       <SheetTrigger asChild>{children}</SheetTrigger>
       <SheetContent className="px-4">
-        <SheetHeader className="p-0 pt-4 gap-0">
+        <SheetHeader className="gap-0 p-0 pt-4">
           <SheetTitle>Code</SheetTitle>
           <SheetDescription>
             You can copy the code to your clipboard.
           </SheetDescription>
         </SheetHeader>
         <AddShadcnCodeBlock text={npxShadcnAdd} />
-        <CodeBlock code={code} clickToViewMore={false} language="tsx" />
+        <CodeBlock clickToViewMore={false} code={code} language="tsx" />
       </SheetContent>
     </Sheet>
   );

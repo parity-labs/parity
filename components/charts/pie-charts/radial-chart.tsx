@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -59,19 +59,19 @@ export function DefaultRadialChart() {
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         <ChartContainer
-          config={chartConfig}
           className="mx-auto aspect-square max-h-[250px]"
+          config={chartConfig}
         >
           <RadialBarChart data={chartData} innerRadius={30} outerRadius={110}>
             <ChartTooltip
-              cursor={false}
               content={<ChartTooltipContent hideLabel nameKey="browser" />}
+              cursor={false}
             />
             <RadialBar
-              cornerRadius={10}
-              dataKey="visitors"
               background
               className="drop-shadow-lg"
+              cornerRadius={10}
+              dataKey="visitors"
             />
           </RadialBarChart>
         </ChartContainer>
