@@ -1,7 +1,7 @@
 import { Connection, clusterApiUrl } from "@solana/web3.js";
 
 export function getConnection() {
-  const rpcUrl = process.env.RPC_URL || clusterApiUrl("mainnet-beta");
+  const rpcUrl = process.env.RPC_URL || clusterApiUrl("devnet");
   return new Connection(rpcUrl, "confirmed");
 }
 
