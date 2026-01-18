@@ -5,10 +5,10 @@ import { launchRouter } from "./routes/launch";
 import { poolRouter } from "./routes/pool";
 
 export const router = os.router({
-  chain: chainRouter,
-  config: configRouter,
-  launch: launchRouter,
-  pool: poolRouter,
+  chain: os.router(chainRouter),
+  config: os.router(configRouter),
+  launch: os.router(launchRouter),
+  pool: os.router(poolRouter),
 });
 
 export type Router = typeof router;
