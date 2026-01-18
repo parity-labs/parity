@@ -2,6 +2,7 @@
 
 import {
   CheckIcon,
+  CurrencyDollarIcon,
   LinkBreakIcon,
   SignOutIcon,
   SpinnerIcon,
@@ -22,6 +23,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useWalletBalance } from "@/hooks/use-wallet-balance";
 import { signIn, signOut, useSession } from "@/lib/auth-client";
 
 function createSignMessage(nonce: string, publicKey: string): string {
@@ -36,22 +38,76 @@ function shortAddress(addr: string): string {
   return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
 }
 
+function formatSol(sol: number): string {
+  if (sol >= 1000) {
+    return `${(sol / 1000).toFixed(1)}k`;
+  }
+  if (sol >= 1) {
+    return sol.toFixed(2);
+  }
+  if (sol >= 0.01) {
+    return sol.toFixed(3);
+  }
+  return sol.toFixed(4);
+}
+
 function TriggerLabel({
   walletAddress,
   connected,
+  balance,
 }: {
   walletAddress: string | null;
   connected: boolean;
+  balance: number | null;
 }) {
   if (walletAddress) {
     return (
-      <span className="font-mono text-sm">{shortAddress(walletAddress)}</span>
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-sm">{shortAddress(walletAddress)}</span>
+        {balance !== null && (
+          <span className="bg-muted px-1.5 py-0.5 font-mono text-muted-foreground text-xs">
+            {formatSol(balance)}
+          </span>
+        )}
+      </div>
     );
   }
   if (connected) {
     return <span className="text-muted-foreground text-sm">Link wallet</span>;
   }
   return <span className="text-muted-foreground text-sm">Connect</span>;
+}
+
+function BalanceDisplay() {
+  const { data, isLoading } = useWalletBalance();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-between border-border border-t px-4 py-3">
+        <span className="text-muted-foreground text-xs">Balance</span>
+        <div className="h-4 w-16 animate-pulse bg-muted" />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center justify-between border-border border-t px-4 py-3">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        <CurrencyDollarIcon className="size-3.5" weight="bold" />
+        <span className="text-xs">Balance</span>
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className="font-medium font-mono text-sm">
+          {formatSol(data.sol)}
+        </span>
+        <span className="text-muted-foreground text-xs">SOL</span>
+      </div>
+    </div>
+  );
 }
 
 function LinkedWallet({
@@ -64,7 +120,7 @@ function LinkedWallet({
   isUnlinking: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded bg-primary/5 p-3">
+    <div className="flex items-center gap-3 bg-primary/5 p-3">
       <div className="flex size-9 shrink-0 items-center justify-center bg-primary/10">
         <WalletIcon className="size-5 text-primary" weight="duotone" />
       </div>
@@ -103,7 +159,7 @@ function ConnectedWallet({
 }) {
   return (
     <button
-      className="flex w-full items-center gap-3 rounded bg-muted/50 p-3 text-left transition-colors hover:bg-muted disabled:opacity-50"
+      className="flex w-full items-center gap-3 bg-muted/50 p-3 text-left transition-colors hover:bg-muted disabled:opacity-50"
       disabled={isLinking}
       onClick={onLink}
       type="button"
@@ -124,7 +180,7 @@ function ConnectedWallet({
 function NoWallet({ onConnect }: { onConnect: () => void }) {
   return (
     <button
-      className="flex w-full items-center gap-3 rounded bg-muted/50 p-3 text-left transition-colors hover:bg-muted"
+      className="flex w-full items-center gap-3 bg-muted/50 p-3 text-left transition-colors hover:bg-muted"
       onClick={onConnect}
       type="button"
     >
@@ -182,6 +238,7 @@ export function AuthButton() {
   const { data: session, isPending } = useSession();
   const { publicKey, disconnect, connected, signMessage } = useWallet();
   const { setVisible } = useWalletModal();
+  const { data: balance } = useWalletBalance();
 
   const { data: linkedWallet, isLoading } = useQuery({
     queryKey: ["linkedWallet", session?.user?.id],
@@ -269,12 +326,16 @@ export function AuthButton() {
               </div>
             )}
           </div>
-          <TriggerLabel connected={connected} walletAddress={walletAddress} />
+          <TriggerLabel
+            balance={balance?.sol ?? null}
+            connected={connected}
+            walletAddress={walletAddress}
+          />
         </button>
       </PopoverTrigger>
 
       <PopoverContent align="end" className="w-80 p-0">
-        <div className="border-border border-b p-4">
+        <div className="p-4">
           <div className="flex items-center gap-3">
             <Avatar className="size-10">
               <AvatarImage
@@ -290,24 +351,28 @@ export function AuthButton() {
           </div>
         </div>
 
-        <div className="p-3">
-          <p className="mb-2 px-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-            Wallet
-          </p>
-          <WalletSection
-            connectedAddress={connectedAddress}
-            isLinking={linkMutation.isPending}
-            isUnlinking={unlinkMutation.isPending}
-            onConnect={() => setVisible(true)}
-            onLink={() => linkMutation.mutate()}
-            onUnlink={() => unlinkMutation.mutate()}
-            walletAddress={walletAddress}
-          />
-          {error && (
-            <p className="mt-2 px-1 text-destructive text-xs">
-              {error.message}
+        <div className="border-border border-t">
+          <div className="p-3">
+            <p className="mb-2 px-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+              Wallet
             </p>
-          )}
+            <WalletSection
+              connectedAddress={connectedAddress}
+              isLinking={linkMutation.isPending}
+              isUnlinking={unlinkMutation.isPending}
+              onConnect={() => setVisible(true)}
+              onLink={() => linkMutation.mutate()}
+              onUnlink={() => unlinkMutation.mutate()}
+              walletAddress={walletAddress}
+            />
+            {error && (
+              <p className="mt-2 px-1 text-destructive text-xs">
+                {error.message}
+              </p>
+            )}
+          </div>
+
+          {walletAddress && <BalanceDisplay />}
         </div>
 
         <div className="border-border border-t p-2">

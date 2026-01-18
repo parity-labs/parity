@@ -9,7 +9,6 @@ import {
   ScalesIcon,
   ShieldCheckIcon,
 } from "@phosphor-icons/react/dist/ssr";
-import { Header } from "@/components/header";
 import { Badge } from "@/components/ui/badge";
 
 function ParityLogo({ className }: { className?: string }) {
@@ -27,8 +26,6 @@ function VerifiedBadge() {
 export default function Home() {
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
-      <Header />
-
       {/* Hero */}
       <section className="border-border border-b py-24 md:py-32">
         <div className="mx-auto max-w-6xl px-6">
