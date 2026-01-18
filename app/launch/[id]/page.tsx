@@ -21,44 +21,51 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { rpc } from "@/lib/rpc/client";
 import { getConnection } from "@/lib/solana";
 
-const STATUS_CONFIG = {
+const STATUS = {
   pending: {
     label: "Pending",
-    description: "Ready to deploy on-chain.",
     icon: ClockIcon,
     className: "text-muted-foreground bg-muted",
   },
   active: {
     label: "Active",
-    description: "Live and tradeable.",
     icon: RocketIcon,
     className: "text-primary bg-primary/10",
   },
   migrated: {
     label: "Migrated",
-    description: "Graduated to DEX.",
     icon: CheckCircleIcon,
     className: "text-primary bg-primary/10",
   },
   failed: {
     label: "Failed",
-    description: "Deployment failed.",
     icon: WarningIcon,
     className: "text-destructive bg-destructive/10",
   },
 } as const;
 
-function shortAddress(addr: string): string {
+function shortAddress(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
 function CopyButton({ text }: { text: string }) {
   return (
     <button
-      className="flex items-center gap-1.5 font-mono text-sm transition-colors hover:text-primary"
+      className="flex items-center gap-1.5 font-mono text-sm hover:text-primary"
       onClick={() => navigator.clipboard.writeText(text)}
       type="button"
     >
@@ -69,20 +76,14 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export default function LaunchDetailPage() {
-  const params = useParams();
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const id = params.id as string;
-
   const { publicKey, signTransaction, connected } = useWallet();
-  const { setVisible: setWalletModalVisible } = useWalletModal();
-  const [deployError, setDeployError] = useState<string | null>(null);
+  const { setVisible: openWalletModal } = useWalletModal();
+  const [error, setError] = useState<string | null>(null);
 
-  const {
-    data: launch,
-    isLoading,
-    error,
-  } = useQuery({
+  const { data: launch, isLoading } = useQuery({
     queryKey: ["launch", id],
     queryFn: () => rpc.launch.get({ id }),
   });
@@ -100,15 +101,29 @@ export default function LaunchDetailPage() {
       if (!(publicKey && signTransaction)) {
         throw new Error("Wallet not connected");
       }
+      setError(null);
 
-      setDeployError(null);
-
-      const prepareResult = await rpc.launch.prepareDeploy({
+      const connection = getConnection();
+      const prepare = await rpc.launch.prepareDeploy({
         id,
         creatorWallet: publicKey.toBase58(),
       });
 
-      const txBuffer = Buffer.from(prepareResult.transaction, "base64");
+      if (prepare.alreadyDeployed) {
+        return { poolAddress: prepare.poolAddress };
+      }
+
+      const recovery = await rpc.launch.recoverDeploy({
+        id,
+        poolAddress: prepare.poolAddress,
+        tokenMint: prepare.baseMint,
+      });
+
+      if (recovery.success) {
+        return { poolAddress: prepare.poolAddress };
+      }
+
+      const txBuffer = Buffer.from(prepare.transaction, "base64");
       let signedTx: Transaction | VersionedTransaction;
 
       try {
@@ -119,53 +134,61 @@ export default function LaunchDetailPage() {
         signedTx = await signTransaction(Transaction.from(txBuffer));
       }
 
-      const connection = getConnection();
+      const { blockhash, lastValidBlockHeight } =
+        await connection.getLatestBlockhash("confirmed");
 
       let signature: string;
       try {
-        signature = await connection.sendRawTransaction(signedTx.serialize());
+        signature = await connection.sendRawTransaction(signedTx.serialize(), {
+          skipPreflight: true,
+          maxRetries: 3,
+        });
       } catch (err) {
+        if (err instanceof Error && err.message.includes("AlreadyProcessed")) {
+          const retry = await rpc.launch.recoverDeploy({
+            id,
+            poolAddress: prepare.poolAddress,
+            tokenMint: prepare.baseMint,
+          });
+          if (retry.success) {
+            return { poolAddress: prepare.poolAddress };
+          }
+          throw new Error("Transaction processed but pool not found");
+        }
         if (err instanceof SendTransactionError) {
           const logs = await err.getLogs(connection);
-          console.error("Transaction logs:", logs);
-          const logsPreview = logs?.slice(0, 5).join("\n") ?? "No logs";
           throw new Error(
-            `Transaction simulation failed.\nLogs:\n${logsPreview}`
+            logs?.find((l) => l.includes("Error")) ?? err.message
           );
         }
         throw err;
       }
 
-      const confirmation = await connection.confirmTransaction(
-        signature,
+      await connection.confirmTransaction(
+        { signature, blockhash, lastValidBlockHeight },
         "confirmed"
       );
 
-      if (confirmation.value.err) {
-        throw new Error(`Transaction failed: ${confirmation.value.err}`);
-      }
-
+      await new Promise((r) => setTimeout(r, 1500));
       await rpc.launch.confirmDeploy({
         id,
-        poolAddress: prepareResult.poolAddress,
-        tokenMint: prepareResult.baseMint,
+        poolAddress: prepare.poolAddress,
+        tokenMint: prepare.baseMint,
         signature,
       });
 
-      return { signature, poolAddress: prepareResult.poolAddress };
+      return { poolAddress: prepare.poolAddress };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["launch", id] });
       queryClient.invalidateQueries({ queryKey: ["launches"] });
     },
-    onError: (err) => {
-      setDeployError(err.message);
-    },
+    onError: (err) => setError(err.message),
   });
 
   const handleDeploy = () => {
     if (!connected) {
-      setWalletModalVisible(true);
+      openWalletModal(true);
       return;
     }
     deployMutation.mutate();
@@ -180,26 +203,24 @@ export default function LaunchDetailPage() {
     );
   }
 
-  if (error || !launch) {
+  if (!launch) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-8">
         <Link
-          className="mb-6 inline-flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
+          className="mb-6 inline-flex items-center gap-1.5 text-muted-foreground text-sm hover:text-foreground"
           href="/launches"
         >
           <ArrowLeftIcon className="size-4" />
           Back
         </Link>
         <div className="border border-destructive/20 bg-destructive/5 p-6">
-          <p className="text-destructive">
-            {error?.message ?? "Launch not found"}
-          </p>
+          <p className="text-destructive">Launch not found</p>
         </div>
       </div>
     );
   }
 
-  const status = STATUS_CONFIG[launch.status];
+  const status = STATUS[launch.status];
   const StatusIcon = status.icon;
   const isPending = launch.status === "pending";
   const isDeploying = deployMutation.isPending;
@@ -207,7 +228,7 @@ export default function LaunchDetailPage() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
       <Link
-        className="mb-6 inline-flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
+        className="mb-6 inline-flex items-center gap-1.5 text-muted-foreground text-sm hover:text-foreground"
         href="/launches"
       >
         <ArrowLeftIcon className="size-4" />
@@ -285,14 +306,14 @@ export default function LaunchDetailPage() {
                   weight="fill"
                 />
                 <p className="text-muted-foreground text-xs">
-                  Connect your wallet to deploy this token on-chain.
+                  Connect your wallet to deploy this token.
                 </p>
               </div>
             )}
 
             <div className="flex gap-3 pt-2">
               <button
-                className="flex h-11 flex-1 items-center justify-center gap-2 bg-primary font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-11 flex-1 items-center justify-center gap-2 bg-primary font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
                 disabled={isDeploying}
                 onClick={handleDeploy}
                 type="button"
@@ -309,26 +330,47 @@ export default function LaunchDetailPage() {
                   </>
                 )}
               </button>
-              <button
-                className="flex size-11 items-center justify-center border border-border text-muted-foreground transition-colors hover:border-destructive hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                disabled={deleteMutation.isPending || isDeploying}
-                onClick={() => deleteMutation.mutate()}
-                type="button"
-              >
-                <TrashIcon className="size-5" weight="bold" />
-              </button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    className="flex size-11 items-center justify-center border border-border text-muted-foreground hover:border-destructive hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                    disabled={deleteMutation.isPending || isDeploying}
+                    type="button"
+                  >
+                    <TrashIcon className="size-5" weight="bold" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete {launch.name}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => deleteMutation.mutate()}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </>
         )}
 
-        {(deployError || deleteMutation.error) && (
+        {(error || deleteMutation.error) && (
           <div className="flex items-start gap-2 border border-destructive/30 bg-destructive/5 p-3">
             <WarningIcon
               className="mt-0.5 size-4 shrink-0 text-destructive"
               weight="bold"
             />
             <p className="text-destructive text-sm">
-              {deployError || deleteMutation.error?.message}
+              {error || deleteMutation.error?.message}
             </p>
           </div>
         )}
@@ -339,9 +381,7 @@ export default function LaunchDetailPage() {
               className="mt-0.5 size-4 shrink-0 text-primary"
               weight="fill"
             />
-            <p className="text-primary text-sm">
-              Token deployed successfully! Your token is now live on Meteora.
-            </p>
+            <p className="text-primary text-sm">Token deployed successfully!</p>
           </div>
         )}
       </div>

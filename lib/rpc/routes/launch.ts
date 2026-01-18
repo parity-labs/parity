@@ -10,9 +10,9 @@ import {
 } from "@/lib/meteora";
 import { authedProcedure, publicProcedure } from "../procedures";
 
-const curvePresetSchema = z.enum(["community", "standard", "scarce"]);
+const curvePreset = z.enum(["community", "standard", "scarce"]);
 
-const solanaAddressSchema = z.string().refine(
+const solanaAddress = z.string().refine(
   (val) => {
     try {
       new PublicKey(val);
@@ -25,56 +25,47 @@ const solanaAddressSchema = z.string().refine(
 );
 
 async function getLaunchByOwner(id: string, creatorId: string) {
-  const result = await db
+  const [result] = await db
     .select()
     .from(launch)
     .where(and(eq(launch.id, id), eq(launch.creatorId, creatorId)))
     .limit(1);
-  return result[0] ?? null;
+  return result ?? null;
 }
 
 export const launchRouter = {
-  /** Get top active launches with real-time prices for the ticker */
   ticker: publicProcedure
     .input(
       z.object({ limit: z.number().min(1).max(20).default(20) }).optional()
     )
     .handler(async ({ input }) => {
-      const limit = input?.limit ?? 20;
-
-      // Get active launches that have pool addresses
       const activeLaunches = await db
         .select({
           id: launch.id,
           name: launch.name,
           symbol: launch.symbol,
           poolAddress: launch.poolAddress,
-          createdAt: launch.createdAt,
         })
         .from(launch)
         .where(and(eq(launch.status, "active"), isNotNull(launch.poolAddress)))
         .orderBy(desc(launch.createdAt))
-        .limit(limit);
+        .limit(input?.limit ?? 20);
 
-      // Fetch prices for all pools in parallel
-      const tickerData = await Promise.all(
+      return Promise.all(
         activeLaunches.map(async (l) => {
-          const priceData = l.poolAddress
+          const price = l.poolAddress
             ? await getPoolPriceData(l.poolAddress)
             : null;
-
           return {
             id: l.id,
             symbol: l.symbol,
             name: l.name,
             poolAddress: l.poolAddress,
-            price: priceData?.spotPrice ?? 0,
-            liquiditySol: priceData?.poolLiquiditySol ?? 0,
+            price: price?.spotPrice ?? 0,
+            liquiditySol: price?.poolLiquiditySol ?? 0,
           };
         })
       );
-
-      return tickerData;
     }),
 
   list: authedProcedure.handler(async ({ context }) => {
@@ -102,8 +93,8 @@ export const launchRouter = {
         symbol: z.string().min(1).max(10).toUpperCase(),
         description: z.string().max(500).optional(),
         image: z.url().optional(),
-        curvePreset: curvePresetSchema,
-        charityWallet: solanaAddressSchema,
+        curvePreset,
+        charityWallet: solanaAddress,
         charityName: z.string().max(100).optional(),
       })
     )
@@ -132,20 +123,19 @@ export const launchRouter = {
         symbol: z.string().min(1).max(10).toUpperCase().optional(),
         description: z.string().max(500).optional(),
         image: z.string().url().optional(),
-        curvePreset: curvePresetSchema.optional(),
-        charityWallet: solanaAddressSchema.optional(),
+        curvePreset: curvePreset.optional(),
+        charityWallet: solanaAddress.optional(),
         charityName: z.string().max(100).optional(),
       })
     )
     .handler(async ({ input, context }) => {
       const { id, ...updates } = input;
       const existing = await getLaunchByOwner(id, context.user.id);
-
       if (!existing) {
         throw new Error("Launch not found");
       }
       if (existing.status !== "pending") {
-        throw new Error("Cannot update deployed launch");
+        throw new Error("Cannot update active launch");
       }
 
       await db.update(launch).set(updates).where(eq(launch.id, id));
@@ -156,12 +146,11 @@ export const launchRouter = {
     .input(z.object({ id: z.string() }))
     .handler(async ({ input, context }) => {
       const existing = await getLaunchByOwner(input.id, context.user.id);
-
       if (!existing) {
         throw new Error("Launch not found");
       }
       if (existing.status !== "pending") {
-        throw new Error("Cannot delete deployed launch");
+        throw new Error("Cannot delete active launch");
       }
 
       await db.delete(launch).where(eq(launch.id, input.id));
@@ -169,32 +158,47 @@ export const launchRouter = {
     }),
 
   prepareDeploy: authedProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        creatorWallet: solanaAddressSchema,
-      })
-    )
+    .input(z.object({ id: z.string(), creatorWallet: solanaAddress }))
     .handler(async ({ input, context }) => {
       const existing = await getLaunchByOwner(input.id, context.user.id);
-
       if (!existing) {
         throw new Error("Launch not found");
       }
       if (existing.status !== "pending") {
-        throw new Error("Launch already deployed");
+        throw new Error("Already deployed");
       }
 
-      const metadataUri =
-        existing.image || `https://parity.app/api/metadata/${existing.id}.json`;
+      if (existing.poolAddress && existing.tokenMint) {
+        const exists = await verifyPoolCreated(existing.poolAddress, 3, 1000);
+        if (exists) {
+          await db
+            .update(launch)
+            .set({ status: "active" })
+            .where(eq(launch.id, input.id));
+          return {
+            transaction: "",
+            baseMint: existing.tokenMint,
+            poolAddress: existing.poolAddress,
+            launchId: input.id,
+            alreadyDeployed: true,
+          };
+        }
+      }
 
+      const uri =
+        existing.image || `https://parity.app/api/metadata/${existing.id}.json`;
       const result = await buildCreatePoolTransaction({
         name: existing.name,
         symbol: existing.symbol,
-        uri: metadataUri,
+        uri,
         curvePreset: existing.curvePreset,
         creatorPublicKey: input.creatorWallet,
       });
+
+      await db
+        .update(launch)
+        .set({ poolAddress: result.poolAddress, tokenMint: result.baseMint })
+        .where(eq(launch.id, input.id));
 
       return {
         transaction: result.transaction,
@@ -208,23 +212,22 @@ export const launchRouter = {
     .input(
       z.object({
         id: z.string(),
-        poolAddress: solanaAddressSchema,
-        tokenMint: solanaAddressSchema,
-        signature: z.string().min(64).max(128),
+        poolAddress: solanaAddress,
+        tokenMint: solanaAddress,
+        signature: z.string().min(1).max(128),
       })
     )
     .handler(async ({ input, context }) => {
       const existing = await getLaunchByOwner(input.id, context.user.id);
-
       if (!existing) {
         throw new Error("Launch not found");
       }
       if (existing.status !== "pending") {
-        throw new Error("Launch already deployed");
+        throw new Error("Already deployed");
       }
 
-      const poolExists = await verifyPoolCreated(input.poolAddress);
-      if (!poolExists) {
+      const exists = await verifyPoolCreated(input.poolAddress);
+      if (!exists) {
         throw new Error("Pool not found on-chain");
       }
 
@@ -237,10 +240,40 @@ export const launchRouter = {
         })
         .where(eq(launch.id, input.id));
 
-      return {
-        success: true,
-        poolAddress: input.poolAddress,
-        tokenMint: input.tokenMint,
-      };
+      return { success: true, poolAddress: input.poolAddress };
+    }),
+
+  recoverDeploy: authedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        poolAddress: solanaAddress,
+        tokenMint: solanaAddress,
+      })
+    )
+    .handler(async ({ input, context }) => {
+      const existing = await getLaunchByOwner(input.id, context.user.id);
+      if (!existing) {
+        throw new Error("Launch not found");
+      }
+      if (existing.status !== "pending") {
+        return { success: true, alreadyActive: true };
+      }
+
+      const exists = await verifyPoolCreated(input.poolAddress, 3, 1000);
+      if (!exists) {
+        return { success: false };
+      }
+
+      await db
+        .update(launch)
+        .set({
+          poolAddress: input.poolAddress,
+          tokenMint: input.tokenMint,
+          status: "active",
+        })
+        .where(eq(launch.id, input.id));
+
+      return { success: true, recovered: true };
     }),
 };

@@ -1,5 +1,6 @@
 import {
   DynamicBondingCurveClient,
+  deriveDbcPoolAddress,
   getCurrentPoint,
   getPriceFromSqrtPrice,
   swapQuote,
@@ -10,23 +11,15 @@ import BN from "bn.js";
 import type { CurvePreset } from "./dbc";
 import { getConnection } from "./solana";
 
-const PARITY_CONFIG_ADDRESS = process.env.METEORA_CONFIG_ADDRESS;
+const CONFIG_ADDRESS = process.env.METEORA_CONFIG_ADDRESS;
 
-let dbcClient: DynamicBondingCurveClient | null = null;
+let client: DynamicBondingCurveClient | null = null;
 
-export function getDbcClient(): DynamicBondingCurveClient {
-  if (!dbcClient) {
-    dbcClient = new DynamicBondingCurveClient(getConnection(), "confirmed");
+function getClient() {
+  if (!client) {
+    client = new DynamicBondingCurveClient(getConnection(), "confirmed");
   }
-  return dbcClient;
-}
-
-export interface CreatePoolParams {
-  name: string;
-  symbol: string;
-  uri: string;
-  curvePreset: CurvePreset;
-  creatorPublicKey: string;
+  return client;
 }
 
 export interface CreatePoolResult {
@@ -35,82 +28,67 @@ export interface CreatePoolResult {
   poolAddress: string;
 }
 
-export async function buildCreatePoolTransaction(
-  params: CreatePoolParams
-): Promise<CreatePoolResult> {
-  if (!PARITY_CONFIG_ADDRESS) {
-    throw new Error(
-      "METEORA_CONFIG_ADDRESS not set. Create a config at app.meteora.ag/launchpad and add the address to .env"
-    );
+export async function buildCreatePoolTransaction(params: {
+  name: string;
+  symbol: string;
+  uri: string;
+  curvePreset: CurvePreset;
+  creatorPublicKey: string;
+}): Promise<CreatePoolResult> {
+  if (!CONFIG_ADDRESS) {
+    throw new Error("METEORA_CONFIG_ADDRESS not configured");
   }
 
-  const configPubkey = new PublicKey(PARITY_CONFIG_ADDRESS);
-  const client = getDbcClient();
+  const configKey = new PublicKey(CONFIG_ADDRESS);
+  const dbc = getClient();
   const connection = getConnection();
 
-  // Verify config exists on-chain
-  const configExists = await verifyConfigExists(configPubkey);
-  if (!configExists) {
-    throw new Error(
-      `Meteora config ${PARITY_CONFIG_ADDRESS} not found on-chain. Create it first.`
-    );
+  const poolConfig = await dbc.state.getPoolConfig(configKey);
+  if (!poolConfig) {
+    throw new Error("Meteora config not found on-chain");
   }
 
-  const baseMintKeypair = Keypair.generate();
-  const creatorPubkey = new PublicKey(params.creatorPublicKey);
-
-  const [poolAddress] = PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("pool"),
-      configPubkey.toBuffer(),
-      baseMintKeypair.publicKey.toBuffer(),
-    ],
-    client.pool.getProgram().programId
+  const baseMint = Keypair.generate();
+  const creator = new PublicKey(params.creatorPublicKey);
+  const poolAddress = deriveDbcPoolAddress(
+    poolConfig.quoteMint,
+    baseMint.publicKey,
+    configKey
   );
 
-  const tx = await client.pool.createPool({
-    baseMint: baseMintKeypair.publicKey,
-    config: configPubkey,
+  const tx = await dbc.pool.createPool({
+    baseMint: baseMint.publicKey,
+    config: configKey,
     name: params.name,
     symbol: params.symbol,
     uri: params.uri,
-    payer: creatorPubkey,
-    poolCreator: creatorPubkey,
+    payer: creator,
+    poolCreator: creator,
   });
 
   const { blockhash, lastValidBlockHeight } =
     await connection.getLatestBlockhash();
 
-  let serializedTx: string;
-
+  let serialized: string;
   if (tx instanceof VersionedTransaction) {
     tx.message.recentBlockhash = blockhash;
-    tx.sign([baseMintKeypair]);
-    serializedTx = Buffer.from(tx.serialize()).toString("base64");
+    tx.sign([baseMint]);
+    serialized = Buffer.from(tx.serialize()).toString("base64");
   } else {
     tx.recentBlockhash = blockhash;
     tx.lastValidBlockHeight = lastValidBlockHeight;
-    tx.feePayer = creatorPubkey;
-    tx.partialSign(baseMintKeypair);
-    serializedTx = tx
+    tx.feePayer = creator;
+    tx.partialSign(baseMint);
+    serialized = tx
       .serialize({ requireAllSignatures: false })
       .toString("base64");
   }
 
   return {
-    transaction: serializedTx,
-    baseMint: baseMintKeypair.publicKey.toBase58(),
+    transaction: serialized,
+    baseMint: baseMint.publicKey.toBase58(),
     poolAddress: poolAddress.toBase58(),
   };
-}
-
-async function verifyConfigExists(configAddress: PublicKey): Promise<boolean> {
-  try {
-    const config = await getDbcClient().state.getPoolConfig(configAddress);
-    return config !== null;
-  } catch {
-    return false;
-  }
 }
 
 export async function verifyPoolCreated(
@@ -118,38 +96,32 @@ export async function verifyPoolCreated(
   maxRetries = 5,
   delayMs = 2000
 ): Promise<boolean> {
-  const poolPubkey = new PublicKey(poolAddress);
+  const pubkey = new PublicKey(poolAddress);
+  const connection = getConnection();
 
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
+  for (let i = 0; i < maxRetries; i++) {
     try {
-      const pool = await getDbcClient().state.getPool(poolPubkey);
-      if (pool !== null) {
-        return true;
+      const info = await connection.getAccountInfo(pubkey);
+      if (info) {
+        const pool = await getClient().state.getPool(pubkey);
+        if (pool) {
+          return true;
+        }
       }
     } catch {
-      // Pool not found yet, will retry
+      // Not found yet
     }
-
-    if (attempt < maxRetries - 1) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    if (i < maxRetries - 1) {
+      await new Promise((r) => setTimeout(r, delayMs));
     }
   }
-
   return false;
-}
-
-export function getPoolInfo(poolAddress: string) {
-  return getDbcClient().state.getPool(new PublicKey(poolAddress));
 }
 
 export interface PoolPriceData {
   poolAddress: string;
   baseMint: string;
-  baseReserve: string;
-  quoteReserve: string;
-  /** Current spot price in SOL per token */
   spotPrice: number;
-  /** Pool liquidity in SOL */
   poolLiquiditySol: number;
 }
 
@@ -157,73 +129,57 @@ export async function getPoolPriceData(
   poolAddress: string
 ): Promise<PoolPriceData | null> {
   try {
-    const client = getDbcClient();
-    const poolPubkey = new PublicKey(poolAddress);
-    const pool = await client.state.getPool(poolPubkey);
-
+    const dbc = getClient();
+    const pubkey = new PublicKey(poolAddress);
+    const pool = await dbc.state.getPool(pubkey);
     if (!pool) {
       return null;
     }
 
-    // Get the pool config to access token decimals
-    const config = await client.state.getPoolConfig(pool.config);
+    const config = await dbc.state.getPoolConfig(pool.config);
     if (!config) {
       return null;
     }
 
-    // Use SDK helper to get price from sqrt price
-    const baseDecimal = config.tokenDecimal as TokenDecimal;
-    const quoteDecimal = TokenDecimal.NINE; // SOL has 9 decimals
     const price = getPriceFromSqrtPrice(
       pool.sqrtPrice,
-      baseDecimal,
-      quoteDecimal
+      config.tokenDecimal as TokenDecimal,
+      TokenDecimal.NINE
     );
-
-    const quoteReserve = Number(pool.quoteReserve);
-    const poolLiquiditySol = quoteReserve / 1e9; // Convert lamports to SOL
 
     return {
       poolAddress,
       baseMint: pool.baseMint.toBase58(),
-      baseReserve: pool.baseReserve.toString(),
-      quoteReserve: pool.quoteReserve.toString(),
       spotPrice: price.toNumber(),
-      poolLiquiditySol,
+      poolLiquiditySol: Number(pool.quoteReserve) / 1e9,
     };
-  } catch (error) {
-    console.error("Failed to fetch pool price data:", error);
+  } catch {
     return null;
   }
-}
-
-export interface SwapQuoteResult {
-  inAmount: string;
-  outAmount: string;
-  minOutAmount: string;
 }
 
 export async function getSwapQuote(
   poolAddress: string,
   inAmount: bigint,
   swapType: "buy" | "sell"
-): Promise<SwapQuoteResult | null> {
+): Promise<{
+  inAmount: string;
+  outAmount: string;
+  minOutAmount: string;
+} | null> {
   try {
-    const client = getDbcClient();
-    const poolPubkey = new PublicKey(poolAddress);
-    const pool = await client.state.getPool(poolPubkey);
-
+    const dbc = getClient();
+    const pubkey = new PublicKey(poolAddress);
+    const pool = await dbc.state.getPool(pubkey);
     if (!pool) {
       return null;
     }
 
-    const config = await client.state.getPoolConfig(pool.config);
+    const config = await dbc.state.getPoolConfig(pool.config);
     if (!config) {
       return null;
     }
 
-    // swapBaseForQuote: true = sell tokens for SOL, false = buy tokens with SOL
-    const swapBaseForQuote = swapType === "sell";
     const connection = getConnection();
     const currentPoint = await getCurrentPoint(
       connection,
@@ -233,10 +189,10 @@ export async function getSwapQuote(
     const quote = swapQuote(
       pool,
       config,
-      swapBaseForQuote,
+      swapType === "sell",
       new BN(inAmount.toString()),
-      100, // 1% slippage
-      false, // no referral
+      100,
+      false,
       currentPoint
     );
 
@@ -245,8 +201,7 @@ export async function getSwapQuote(
       outAmount: quote.outputAmount.toString(),
       minOutAmount: quote.minimumAmountOut.toString(),
     };
-  } catch (error) {
-    console.error("Failed to get swap quote:", error);
+  } catch {
     return null;
   }
 }
