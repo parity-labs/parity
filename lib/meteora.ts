@@ -1,5 +1,12 @@
-import { DynamicBondingCurveClient } from "@meteora-ag/dynamic-bonding-curve-sdk";
+import {
+  DynamicBondingCurveClient,
+  getCurrentPoint,
+  getPriceFromSqrtPrice,
+  swapQuote,
+  TokenDecimal,
+} from "@meteora-ag/dynamic-bonding-curve-sdk";
 import { Keypair, PublicKey, VersionedTransaction } from "@solana/web3.js";
+import BN from "bn.js";
 import type { CurvePreset } from "./dbc";
 import { getConnection } from "./solana";
 
@@ -134,4 +141,112 @@ export async function verifyPoolCreated(
 export function getPoolInfo(poolAddress: string) {
   return getDbcClient().state.getPool(new PublicKey(poolAddress));
 }
-  
+
+export interface PoolPriceData {
+  poolAddress: string;
+  baseMint: string;
+  baseReserve: string;
+  quoteReserve: string;
+  /** Current spot price in SOL per token */
+  spotPrice: number;
+  /** Pool liquidity in SOL */
+  poolLiquiditySol: number;
+}
+
+export async function getPoolPriceData(
+  poolAddress: string
+): Promise<PoolPriceData | null> {
+  try {
+    const client = getDbcClient();
+    const poolPubkey = new PublicKey(poolAddress);
+    const pool = await client.state.getPool(poolPubkey);
+
+    if (!pool) {
+      return null;
+    }
+
+    // Get the pool config to access token decimals
+    const config = await client.state.getPoolConfig(pool.config);
+    if (!config) {
+      return null;
+    }
+
+    // Use SDK helper to get price from sqrt price
+    const baseDecimal = config.tokenDecimal as TokenDecimal;
+    const quoteDecimal = TokenDecimal.NINE; // SOL has 9 decimals
+    const price = getPriceFromSqrtPrice(
+      pool.sqrtPrice,
+      baseDecimal,
+      quoteDecimal
+    );
+
+    const quoteReserve = Number(pool.quoteReserve);
+    const poolLiquiditySol = quoteReserve / 1e9; // Convert lamports to SOL
+
+    return {
+      poolAddress,
+      baseMint: pool.baseMint.toBase58(),
+      baseReserve: pool.baseReserve.toString(),
+      quoteReserve: pool.quoteReserve.toString(),
+      spotPrice: price.toNumber(),
+      poolLiquiditySol,
+    };
+  } catch (error) {
+    console.error("Failed to fetch pool price data:", error);
+    return null;
+  }
+}
+
+export interface SwapQuoteResult {
+  inAmount: string;
+  outAmount: string;
+  minOutAmount: string;
+}
+
+export async function getSwapQuote(
+  poolAddress: string,
+  inAmount: bigint,
+  swapType: "buy" | "sell"
+): Promise<SwapQuoteResult | null> {
+  try {
+    const client = getDbcClient();
+    const poolPubkey = new PublicKey(poolAddress);
+    const pool = await client.state.getPool(poolPubkey);
+
+    if (!pool) {
+      return null;
+    }
+
+    const config = await client.state.getPoolConfig(pool.config);
+    if (!config) {
+      return null;
+    }
+
+    // swapBaseForQuote: true = sell tokens for SOL, false = buy tokens with SOL
+    const swapBaseForQuote = swapType === "sell";
+    const connection = getConnection();
+    const currentPoint = await getCurrentPoint(
+      connection,
+      config.activationType
+    );
+
+    const quote = swapQuote(
+      pool,
+      config,
+      swapBaseForQuote,
+      new BN(inAmount.toString()),
+      100, // 1% slippage
+      false, // no referral
+      currentPoint
+    );
+
+    return {
+      inAmount: inAmount.toString(),
+      outAmount: quote.outputAmount.toString(),
+      minOutAmount: quote.minimumAmountOut.toString(),
+    };
+  } catch (error) {
+    console.error("Failed to get swap quote:", error);
+    return null;
+  }
+}

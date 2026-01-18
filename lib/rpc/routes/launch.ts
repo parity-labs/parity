@@ -1,10 +1,14 @@
 import { PublicKey } from "@solana/web3.js";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { launch } from "@/lib/db/auth-schema";
-import { buildCreatePoolTransaction, verifyPoolCreated } from "@/lib/meteora";
-import { authedProcedure } from "../procedures";
+import {
+  buildCreatePoolTransaction,
+  getPoolPriceData,
+  verifyPoolCreated,
+} from "@/lib/meteora";
+import { authedProcedure, publicProcedure } from "../procedures";
 
 const curvePresetSchema = z.enum(["community", "standard", "scarce"]);
 
@@ -30,6 +34,49 @@ async function getLaunchByOwner(id: string, creatorId: string) {
 }
 
 export const launchRouter = {
+  /** Get top active launches with real-time prices for the ticker */
+  ticker: publicProcedure
+    .input(
+      z.object({ limit: z.number().min(1).max(20).default(20) }).optional()
+    )
+    .handler(async ({ input }) => {
+      const limit = input?.limit ?? 20;
+
+      // Get active launches that have pool addresses
+      const activeLaunches = await db
+        .select({
+          id: launch.id,
+          name: launch.name,
+          symbol: launch.symbol,
+          poolAddress: launch.poolAddress,
+          createdAt: launch.createdAt,
+        })
+        .from(launch)
+        .where(and(eq(launch.status, "active"), isNotNull(launch.poolAddress)))
+        .orderBy(desc(launch.createdAt))
+        .limit(limit);
+
+      // Fetch prices for all pools in parallel
+      const tickerData = await Promise.all(
+        activeLaunches.map(async (l) => {
+          const priceData = l.poolAddress
+            ? await getPoolPriceData(l.poolAddress)
+            : null;
+
+          return {
+            id: l.id,
+            symbol: l.symbol,
+            name: l.name,
+            poolAddress: l.poolAddress,
+            price: priceData?.spotPrice ?? 0,
+            liquiditySol: priceData?.poolLiquiditySol ?? 0,
+          };
+        })
+      );
+
+      return tickerData;
+    }),
+
   list: authedProcedure.handler(async ({ context }) => {
     return await db
       .select()
