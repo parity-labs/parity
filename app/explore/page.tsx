@@ -10,6 +10,7 @@ import {
   Warning,
 } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { rpc } from "@/lib/rpc/client";
@@ -171,21 +172,48 @@ function TokenCard({
   return (
     <Link
       className="group block border border-border bg-card p-5 transition-all hover:border-foreground/20 hover:shadow-lg"
-      href={`/launch/${launch.tokenMint ?? launch.id}`}
+      href={`/${launch.tokenMint ?? launch.id}`}
     >
       {/* Header */}
-      <div className="mb-4 flex items-start justify-between">
+      <div className="mb-4 flex items-start gap-4">
+        {/* Token Image */}
+        {launch.image ? (
+          <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-muted">
+            <Image
+              alt={launch.name}
+              className="object-cover"
+              fill
+              src={launch.image}
+            />
+          </div>
+        ) : (
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-muted">
+            <span className="font-mono text-lg text-muted-foreground">
+              {launch.symbol.slice(0, 2)}
+            </span>
+          </div>
+        )}
+
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-semibold text-lg group-hover:text-primary">
-            {launch.name}
-          </h3>
-          <p className="font-mono text-muted-foreground">${launch.symbol}</p>
-        </div>
-        <div
-          className={cn("flex items-center gap-1.5 text-sm", status.className)}
-        >
-          <StatusIcon className="size-4" weight="bold" />
-          <span>{status.label}</span>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="truncate font-semibold text-lg group-hover:text-primary">
+                {launch.name}
+              </h3>
+              <p className="font-mono text-muted-foreground">
+                ${launch.symbol}
+              </p>
+            </div>
+            <div
+              className={cn(
+                "flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-sm",
+                status.className
+              )}
+            >
+              <StatusIcon className="size-4" weight="bold" />
+              <span>{status.label}</span>
+            </div>
+          </div>
         </div>
       </div>
 

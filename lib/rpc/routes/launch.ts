@@ -42,6 +42,7 @@ export const launchRouter = {
           id: launch.id,
           name: launch.name,
           symbol: launch.symbol,
+          image: launch.image,
           poolAddress: launch.poolAddress,
         })
         .from(launch)
@@ -58,6 +59,7 @@ export const launchRouter = {
             id: l.id,
             symbol: l.symbol,
             name: l.name,
+            image: l.image,
             poolAddress: l.poolAddress,
             price: price?.spotPrice ?? 0,
             liquiditySol: price?.poolLiquiditySol ?? 0,

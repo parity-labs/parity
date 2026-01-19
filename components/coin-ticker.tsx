@@ -1,19 +1,33 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Image from "next/image";
 import { rpc } from "@/lib/rpc/client";
 
 function CoinItem({
   symbol,
+  image,
   price,
   liquiditySol,
 }: {
   symbol: string;
+  image: string | null;
   price: number;
   liquiditySol: number;
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-3 px-4">
+    <div className="flex shrink-0 items-center gap-2 px-4">
+      {image ? (
+        <div className="relative size-5 shrink-0 overflow-hidden rounded-full bg-muted">
+          <Image alt={symbol} className="object-cover" fill src={image} />
+        </div>
+      ) : (
+        <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted">
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {symbol.slice(0, 1)}
+          </span>
+        </div>
+      )}
       <span className="font-medium font-mono text-sm">${symbol}</span>
       <span className="font-mono text-muted-foreground text-xs">
         {price.toFixed(6)} SOL
@@ -58,10 +72,22 @@ export function CoinTicker() {
       <div className="relative flex h-10 items-center overflow-hidden">
         <div className="flex animate-marquee">
           {coins.map((c, i) => (
-            <CoinItem key={`${c.symbol}-${i}`} {...c} />
+            <CoinItem
+              image={c.image}
+              key={`${c.symbol}-${i}`}
+              liquiditySol={c.liquiditySol}
+              price={c.price}
+              symbol={c.symbol}
+            />
           ))}
           {coins.map((c, i) => (
-            <CoinItem key={`${c.symbol}-dup-${i}`} {...c} />
+            <CoinItem
+              image={c.image}
+              key={`${c.symbol}-dup-${i}`}
+              liquiditySol={c.liquiditySol}
+              price={c.price}
+              symbol={c.symbol}
+            />
           ))}
         </div>
       </div>

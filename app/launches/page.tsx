@@ -11,6 +11,7 @@ interface Launch {
   id: string;
   name: string;
   symbol: string;
+  image: string | null;
   status: "pending" | "active" | "migrated" | "failed";
   charityName: string | null;
   tokenMint: string | null;
