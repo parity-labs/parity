@@ -221,7 +221,7 @@ export const launchRouter = {
         }
       }
 
-      const uri = `https://parity.app/api/metadata/${existing.id}.json`;
+      const uri = `https://parity.sh/api/metadata/${existing.id}.json`;
       const result = await buildCreatePoolTransaction({
         name: existing.name,
         symbol: existing.symbol,
