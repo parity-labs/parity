@@ -119,7 +119,6 @@ function CopyableAddress({
   );
 }
 
-
 // Quick buy component
 function QuickBuy({
   poolAddress,
@@ -189,11 +188,14 @@ function QuickBuy({
         { skipPreflight: true }
       );
 
-      // Rebroadcast in background to ensure it lands
+      const rebroadcastState = { aborted: false };
       const rebroadcast = async () => {
         const start = Date.now();
-        while (Date.now() - start < 60_000) {
+        while (Date.now() - start < 60_000 && !rebroadcastState.aborted) {
           await new Promise((r) => setTimeout(r, 2000));
+          if (rebroadcastState.aborted) {
+            break;
+          }
           try {
             await connection.sendRawTransaction(signedTx.serialize(), {
               skipPreflight: true,
@@ -210,14 +212,19 @@ function QuickBuy({
           ? signedTx.message.recentBlockhash
           : signedTx.recentBlockhash;
 
-      await connection.confirmTransaction(
-        {
-          signature,
-          blockhash: txBlockhash ?? "",
-          lastValidBlockHeight: result.lastValidBlockHeight,
-        },
-        "confirmed"
-      );
+      try {
+        await connection.confirmTransaction(
+          {
+            signature,
+            blockhash: txBlockhash ?? "",
+            lastValidBlockHeight: result.lastValidBlockHeight,
+          },
+          "confirmed"
+        );
+      } finally {
+        // Stop rebroadcasting once transaction is confirmed
+        rebroadcastState.aborted = true;
+      }
 
       return { signature, outAmount: result.outAmount };
     },
@@ -435,6 +442,7 @@ export function LaunchClient() {
       }
 
       let signature: string;
+      const rebroadcastState = { aborted: false };
       try {
         signature = await connection.sendRawTransaction(signedTx.serialize(), {
           skipPreflight: true,
@@ -443,8 +451,11 @@ export function LaunchClient() {
         // Rebroadcast in background
         const rebroadcast = async () => {
           const start = Date.now();
-          while (Date.now() - start < 60_000) {
+          while (Date.now() - start < 60_000 && !rebroadcastState.aborted) {
             await new Promise((r) => setTimeout(r, 2000));
+            if (rebroadcastState.aborted) {
+              break;
+            }
             try {
               await connection.sendRawTransaction(signedTx.serialize(), {
                 skipPreflight: true,
@@ -456,6 +467,8 @@ export function LaunchClient() {
         };
         rebroadcast();
       } catch (err) {
+        // Stop rebroadcasting on error
+        rebroadcastState.aborted = true;
         if (err instanceof Error && err.message.includes("AlreadyProcessed")) {
           const retry = await rpc.launch.recoverDeploy({
             id,
@@ -481,14 +494,19 @@ export function LaunchClient() {
           ? signedTx.message.recentBlockhash
           : signedTx.recentBlockhash;
 
-      await connection.confirmTransaction(
-        {
-          signature,
-          blockhash: txBlockhash ?? "",
-          lastValidBlockHeight: prepare.lastValidBlockHeight,
-        },
-        "confirmed"
-      );
+      try {
+        await connection.confirmTransaction(
+          {
+            signature,
+            blockhash: txBlockhash ?? "",
+            lastValidBlockHeight: prepare.lastValidBlockHeight,
+          },
+          "confirmed"
+        );
+      } finally {
+        // Stop rebroadcasting once transaction is confirmed
+        rebroadcastState.aborted = true;
+      }
 
       await new Promise((r) => setTimeout(r, 1500));
       await rpc.launch.confirmDeploy({

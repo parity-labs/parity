@@ -235,7 +235,7 @@ export function AuthButton() {
           </p>
         </div>
         <button
-          className="group relative flex h-12 w-full cursor-pointer items-center justify-center gap-3 overflow-hidden rounded-lg bg-white px-4 py-2 text-black transition-all duration-300 hover:bg-zinc-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="group relative flex h-12 w-full cursor-pointer items-center justify-center gap-3 overflow-hidden rounded-lg bg-white px-4 py-2 text-black transition-all duration-300 hover:bg-zinc-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           disabled={isSigningIn}
           onClick={handleTwitterSignIn}
           type="button"

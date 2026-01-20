@@ -7,10 +7,10 @@ import {
   TokenDecimal,
 } from "@meteora-ag/dynamic-bonding-curve-sdk";
 import {
+  ComputeBudgetProgram,
   Keypair,
   PublicKey,
   VersionedTransaction,
-  ComputeBudgetProgram,
 } from "@solana/web3.js";
 
 import BN from "bn.js";
@@ -19,6 +19,10 @@ import { getConnection } from "./solana";
 import { lamportsToSol } from "./solana-utils";
 
 const CONFIG_ADDRESS = process.env.METEORA_CONFIG_ADDRESS;
+const PRIORITY_FEE_MICROLAMPORTS = Number.parseInt(
+  process.env.PRIORITY_FEE_MICROLAMPORTS ?? "50000",
+  10
+);
 
 let client: DynamicBondingCurveClient | null = null;
 
@@ -35,7 +39,6 @@ export interface CreatePoolResult {
   poolAddress: string;
   lastValidBlockHeight: number;
 }
-
 
 export async function buildCreatePoolTransaction(params: {
   name: string;
@@ -79,7 +82,7 @@ export async function buildCreatePoolTransaction(params: {
     await connection.getLatestBlockhash();
 
   const priorityFeeIx = ComputeBudgetProgram.setComputeUnitPrice({
-    microLamports: 50_000,
+    microLamports: PRIORITY_FEE_MICROLAMPORTS,
   });
 
   let serialized: string;
@@ -108,7 +111,6 @@ export async function buildCreatePoolTransaction(params: {
     lastValidBlockHeight,
   };
 }
-
 
 export async function verifyPoolCreated(
   poolAddress: string,
@@ -233,7 +235,6 @@ export interface SwapTransactionResult {
   lastValidBlockHeight: number;
 }
 
-
 export async function buildSwapTransaction(params: {
   poolAddress: string;
   userPublicKey: string;
@@ -291,7 +292,7 @@ export async function buildSwapTransaction(params: {
     await connection.getLatestBlockhash();
 
   const priorityFeeIx = ComputeBudgetProgram.setComputeUnitPrice({
-    microLamports: 50_000,
+    microLamports: PRIORITY_FEE_MICROLAMPORTS,
   });
 
   let serialized: string;
@@ -316,4 +317,3 @@ export async function buildSwapTransaction(params: {
     lastValidBlockHeight,
   };
 }
-

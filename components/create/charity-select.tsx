@@ -49,6 +49,9 @@ export function CharitySelect({
     const charity = CHARITIES.find((c) => c.address === newValue);
     if (charity) {
       onChange(charity.address, charity.name);
+    } else {
+      console.error(`Charity not found: ${newValue}`);
+      onChange(newValue);
     }
   };
 
@@ -83,7 +86,7 @@ export function CharitySelect({
         <Select onValueChange={handleSelectChange} value={value}>
           <SelectTrigger
             className={cn(
-              "input-b-1 h-auto min-h-14 w-full py-4",
+              "h-auto min-h-14 w-full py-4",
               error && "border-destructive/50 focus-visible:ring-destructive/20"
             )}
           >

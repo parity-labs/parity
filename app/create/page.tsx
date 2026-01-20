@@ -8,13 +8,13 @@ import {
   WarningIcon,
   XIcon,
 } from "@phosphor-icons/react";
+import { PublicKey } from "@solana/web3.js";
 import { useMutation } from "@tanstack/react-query";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CHARITIES, CharitySelect } from "@/components/create/charity-select";
 import { FeeStructureInfo } from "@/components/create/fee-structure-info";
-
 // UI Components
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,27 +52,15 @@ function validateForm(form: {
   // Charity wallet validation
   if (!form.charityWallet.trim()) {
     errors.charityWallet = "Charity wallet is required";
-  } else if (
-    form.charityWallet !== "random" &&
-    (form.charityWallet.length < 32 || form.charityWallet.length > 44)
-  ) {
-    errors.charityWallet =
-      "Enter a valid Solana wallet address (32-44 characters)";
+  } else if (form.charityWallet !== "random") {
+    try {
+      new PublicKey(form.charityWallet);
+    } catch {
+      errors.charityWallet = "Invalid Solana wallet address";
+    }
   }
 
   return errors;
-}
-
-function _FieldError({ error }: { error?: string }) {
-  if (!error) {
-    return null;
-  }
-  return (
-    <p className="slide-in-from-top-1 mt-1.5 flex animate-in items-center gap-1 font-medium text-destructive text-xs">
-      <WarningIcon className="size-3.5" weight="bold" />
-      {error}
-    </p>
-  );
 }
 
 export default function CreatePage() {
@@ -94,8 +82,8 @@ export default function CreatePage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const isInitialMount = useRef(true);
 
-  // Load from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem(CREATE_FORM_STORAGE_KEY);
     if (saved) {
@@ -112,14 +100,24 @@ export default function CreatePage() {
         console.error("Failed to parse saved form state", e);
       }
     }
+    isInitialMount.current = false;
   }, []);
 
-  // Save to localStorage on changes
+  // Save to localStorage on changes (debounced)
   useEffect(() => {
-    localStorage.setItem(
-      CREATE_FORM_STORAGE_KEY,
-      JSON.stringify({ form, imageUrl })
-    );
+    // Skip saving on initial mount
+    if (isInitialMount.current) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      localStorage.setItem(
+        CREATE_FORM_STORAGE_KEY,
+        JSON.stringify({ form, imageUrl })
+      );
+    }, 300); // Debounce writes by 300ms
+
+    return () => clearTimeout(timer);
   }, [form, imageUrl]);
 
   const uploadImage = useCallback(async (file: File) => {

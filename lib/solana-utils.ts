@@ -14,7 +14,9 @@ export function solToLamports(sol: number | string): bigint {
 /**
  * Converts Lamports to SOL.
  */
-export function lamportsToSol(lamports: bigint | number | string | { toString(): string }): number {
+export function lamportsToSol(
+  lamports: bigint | number | string | { toString(): string }
+): number {
   return Number(lamports.toString()) / LAMPORTS_PER_SOL;
 }
 
