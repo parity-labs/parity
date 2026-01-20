@@ -48,10 +48,39 @@ Create a `.env` file:
 ```
 DATABASE_URL=postgres://...
 BETTER_AUTH_SECRET=...
-TWITTER_CLIENT_ID=...
-TWITTER_CLIENT_SECRET=...
+BETTER_AUTH_URL=http://localhost:3000  # Required for auth to work locally
+X_CLIENT_ID=...
+X_CLIENT_SECRET=...
 RPC_URL=...
 ```
+
+> **Note:** `BETTER_AUTH_URL` must be set to your app's URL (e.g., `http://localhost:3000` for local dev). Without this, Twitter auth will fail with a 403 "Invalid Origin" error.
+
+### X (Twitter) OAuth Setup
+
+1. Go to [X Developer Portal](https://developer.x.com/en/portal/dashboard)
+2. Select your app under **Apps**
+3. Click **"Set up"** under **User authentication settings**
+4. Fill out the form:
+
+   **App permissions:** `Read`
+
+   **Type of App:** `Web App, Automated App or Bot`
+
+   **Callback URI:** `http://localhost:3000/api/auth/callback/twitter`
+
+   **Website URL:** `http://localhost:3000`
+
+5. Click **Save** — you'll receive a **Client ID** and **Client Secret**
+6. Add them to your `.env`:
+   ```
+   X_CLIENT_ID=your_client_id
+   X_CLIENT_SECRET=your_client_secret
+   ```
+
+> **Production:** Add your production callback URL too (e.g., `https://yourdomain.com/api/auth/callback/twitter`)
+
+
 
 ### Install Dependencies
 
