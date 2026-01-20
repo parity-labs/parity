@@ -12,6 +12,7 @@ import {
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   getLinkedWallet,
   linkWallet,
@@ -163,6 +164,16 @@ export function AuthButton() {
   const { publicKey, disconnect, signMessage } = useWallet();
   const { setVisible } = useWalletModal();
   const { data: balance } = useWalletBalance();
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
+  const handleTwitterSignIn = async () => {
+    setIsSigningIn(true);
+    await signIn.social({
+      provider: "twitter",
+      callbackURL: window.location.pathname,
+    });
+    setIsSigningIn(false);
+  };
 
   const { data: linkedWallet, isLoading } = useQuery({
     queryKey: ["linkedWallet", session?.user?.id],
@@ -224,13 +235,18 @@ export function AuthButton() {
           </p>
         </div>
         <button
-          className="group relative flex h-12 w-full cursor-pointer items-center justify-center gap-3 overflow-hidden rounded-lg bg-white px-4 py-2 text-black transition-all duration-300 hover:bg-zinc-200 active:scale-[0.98]"
-          onClick={() => signIn.social({ provider: "twitter" })}
+          className="group relative flex h-12 w-full cursor-pointer items-center justify-center gap-3 overflow-hidden rounded-lg bg-white px-4 py-2 text-black transition-all duration-300 hover:bg-zinc-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={isSigningIn}
+          onClick={handleTwitterSignIn}
           type="button"
         >
-          <XLogo className="size-4 transition-transform duration-300 group-hover:scale-110" />
+          {isSigningIn ? (
+            <SpinnerIcon className="size-4 animate-spin" />
+          ) : (
+            <XLogo className="size-4 transition-transform duration-300 group-hover:scale-110" />
+          )}
           <span className="font-bold text-sm tracking-tight">
-            Continue with X
+            {isSigningIn ? "Signing in..." : "Continue with X"}
           </span>
         </button>
       </div>

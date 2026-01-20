@@ -219,6 +219,7 @@ export const launchRouter = {
             poolAddress: existing.poolAddress,
             launchId: input.id,
             alreadyDeployed: true,
+            lastValidBlockHeight: 0,
           };
         }
       }
@@ -243,6 +244,7 @@ export const launchRouter = {
         baseMint: result.baseMint,
         poolAddress: result.poolAddress,
         launchId: input.id,
+        lastValidBlockHeight: result.lastValidBlockHeight,
       };
     }),
 

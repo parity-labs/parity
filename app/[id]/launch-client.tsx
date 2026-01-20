@@ -17,7 +17,6 @@ import {
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import {
-  LAMPORTS_PER_SOL,
   SendTransactionError,
   Transaction,
   VersionedTransaction,
@@ -50,6 +49,7 @@ import {
 import { useWalletBalance } from "@/hooks/use-wallet-balance";
 import { rpc } from "@/lib/rpc/client";
 import { getConnection } from "@/lib/solana";
+import { formatPrice, formatSol, solToLamports } from "@/lib/solana-utils";
 import { cn } from "@/lib/utils";
 
 const TRADING_LINKS = [
@@ -65,6 +65,9 @@ const TRADING_LINKS = [
     getUrl: (m: string) => `https://dexscreener.com/solana/${m}`,
   },
 ] as const;
+
+const MIN_DEPLOY_SOL = 0.01;
+const MIN_SWAP_SOL = 0.005;
 
 function TradingLinksSection({ tokenMint }: { tokenMint: string }) {
   return (
@@ -116,32 +119,6 @@ function CopyableAddress({
   );
 }
 
-function formatPrice(price: number): string {
-  if (price === 0) {
-    return "$0.00";
-  }
-  if (price < 0.000_001) {
-    return `$${price.toExponential(2)}`;
-  }
-  if (price < 0.01) {
-    return `$${price.toFixed(6)}`;
-  }
-  if (price < 1) {
-    return `$${price.toFixed(4)}`;
-  }
-  return `$${price.toFixed(2)}`;
-}
-
-function formatSol(sol: number): string {
-  if (sol < 1) {
-    return `${sol.toFixed(4)} SOL`;
-  }
-  if (sol < 100) {
-    return `${sol.toFixed(2)} SOL`;
-  }
-  return `${sol.toLocaleString(undefined, { maximumFractionDigits: 0 })} SOL`;
-}
-
 // Quick buy component
 function QuickBuy({
   poolAddress,
@@ -161,9 +138,7 @@ function QuickBuy({
   const [amount, setAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const amountLamports = amount
-    ? BigInt(Math.floor(Number.parseFloat(amount) * LAMPORTS_PER_SOL))
-    : BigInt(0);
+  const amountLamports = amount ? solToLamports(amount) : BigInt(0);
 
   const { data: quote, isFetching: isQuoting } = useQuery({
     queryKey: ["swap-quote", poolAddress, amount],
@@ -208,18 +183,48 @@ function QuickBuy({
         signedTx = await signTransaction(Transaction.from(txBuffer));
       }
 
-      const { blockhash, lastValidBlockHeight } =
-        await connection.getLatestBlockhash("confirmed");
-
       const signature = await connection.sendRawTransaction(
         signedTx.serialize(),
-        { skipPreflight: true, maxRetries: 3 }
+        { skipPreflight: true }
       );
 
-      await connection.confirmTransaction(
-        { signature, blockhash, lastValidBlockHeight },
-        "confirmed"
-      );
+      const rebroadcastState = { aborted: false };
+      const rebroadcast = async () => {
+        const start = Date.now();
+        while (Date.now() - start < 60_000 && !rebroadcastState.aborted) {
+          await new Promise((r) => setTimeout(r, 2000));
+          if (rebroadcastState.aborted) {
+            break;
+          }
+          try {
+            await connection.sendRawTransaction(signedTx.serialize(), {
+              skipPreflight: true,
+            });
+          } catch {
+            // Ignore rebroadcast errors, the confirmation will handle success/failure
+          }
+        }
+      };
+      rebroadcast();
+
+      const txBlockhash =
+        signedTx instanceof VersionedTransaction
+          ? signedTx.message.recentBlockhash
+          : signedTx.recentBlockhash;
+
+      try {
+        await connection.confirmTransaction(
+          {
+            signature,
+            blockhash: txBlockhash ?? "",
+            lastValidBlockHeight: result.lastValidBlockHeight,
+          },
+          "confirmed"
+        );
+      } finally {
+        // Stop rebroadcasting once transaction is confirmed
+        rebroadcastState.aborted = true;
+      }
 
       return { signature, outAmount: result.outAmount };
     },
@@ -235,6 +240,12 @@ function QuickBuy({
   const handleSwap = () => {
     if (!connected) {
       openWalletModal(true);
+      return;
+    }
+    if (balance && balance.sol < MIN_SWAP_SOL) {
+      setError(
+        `Insufficient SOL for fees. Minimum ${MIN_SWAP_SOL} SOL required.`
+      );
       return;
     }
     swapMutation.mutate();
@@ -336,6 +347,7 @@ export function LaunchClient() {
   const queryClient = useQueryClient();
   const { publicKey, signTransaction, connected } = useWallet();
   const { setVisible: openWalletModal } = useWalletModal();
+  const { data: balance } = useWalletBalance();
   const [deployError, setDeployError] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -429,16 +441,34 @@ export function LaunchClient() {
         signedTx = await signTransaction(Transaction.from(txBuffer));
       }
 
-      const { blockhash, lastValidBlockHeight } =
-        await connection.getLatestBlockhash("confirmed");
-
       let signature: string;
+      const rebroadcastState = { aborted: false };
       try {
         signature = await connection.sendRawTransaction(signedTx.serialize(), {
           skipPreflight: true,
-          maxRetries: 3,
         });
+
+        // Rebroadcast in background
+        const rebroadcast = async () => {
+          const start = Date.now();
+          while (Date.now() - start < 60_000 && !rebroadcastState.aborted) {
+            await new Promise((r) => setTimeout(r, 2000));
+            if (rebroadcastState.aborted) {
+              break;
+            }
+            try {
+              await connection.sendRawTransaction(signedTx.serialize(), {
+                skipPreflight: true,
+              });
+            } catch {
+              // Ignore rebroadcast errors, the confirmation will handle success/failure
+            }
+          }
+        };
+        rebroadcast();
       } catch (err) {
+        // Stop rebroadcasting on error
+        rebroadcastState.aborted = true;
         if (err instanceof Error && err.message.includes("AlreadyProcessed")) {
           const retry = await rpc.launch.recoverDeploy({
             id,
@@ -459,10 +489,24 @@ export function LaunchClient() {
         throw err;
       }
 
-      await connection.confirmTransaction(
-        { signature, blockhash, lastValidBlockHeight },
-        "confirmed"
-      );
+      const txBlockhash =
+        signedTx instanceof VersionedTransaction
+          ? signedTx.message.recentBlockhash
+          : signedTx.recentBlockhash;
+
+      try {
+        await connection.confirmTransaction(
+          {
+            signature,
+            blockhash: txBlockhash ?? "",
+            lastValidBlockHeight: prepare.lastValidBlockHeight,
+          },
+          "confirmed"
+        );
+      } finally {
+        // Stop rebroadcasting once transaction is confirmed
+        rebroadcastState.aborted = true;
+      }
 
       await new Promise((r) => setTimeout(r, 1500));
       await rpc.launch.confirmDeploy({
@@ -484,6 +528,12 @@ export function LaunchClient() {
   const handleDeploy = () => {
     if (!connected) {
       openWalletModal(true);
+      return;
+    }
+    if (balance && balance.sol < MIN_DEPLOY_SOL) {
+      setDeployError(
+        `Insufficient SOL for deployment. Approximately ${MIN_DEPLOY_SOL} SOL is required for pool creation rent and fees.`
+      );
       return;
     }
     deployMutation.mutate();

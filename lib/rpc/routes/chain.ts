@@ -1,6 +1,7 @@
-import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import { z } from "zod";
 import { getConnection } from "@/lib/solana";
+import { lamportsToSol } from "@/lib/solana-utils";
 import { publicProcedure } from "../procedures";
 
 export const chainRouter = {
@@ -29,9 +30,9 @@ export const chainRouter = {
     const supply = await connection.getSupply();
 
     return {
-      total: Number(supply.value.total) / LAMPORTS_PER_SOL,
-      circulating: Number(supply.value.circulating) / LAMPORTS_PER_SOL,
-      nonCirculating: Number(supply.value.nonCirculating) / LAMPORTS_PER_SOL,
+      total: lamportsToSol(supply.value.total),
+      circulating: lamportsToSol(supply.value.circulating),
+      nonCirculating: lamportsToSol(supply.value.nonCirculating),
     };
   }),
 
@@ -45,7 +46,7 @@ export const chainRouter = {
       return {
         address: input.address,
         lamports: balance,
-        sol: balance / LAMPORTS_PER_SOL,
+        sol: lamportsToSol(balance),
       };
     }),
 };
