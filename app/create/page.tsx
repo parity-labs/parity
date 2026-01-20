@@ -2,11 +2,9 @@
 
 import {
   ImageIcon,
-  InfoIcon,
   LockSimpleIcon,
   RocketIcon,
   SpinnerIcon,
-  TrendDownIcon,
   WarningIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -14,7 +12,13 @@ import { useMutation } from "@tanstack/react-query";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
-import { useSession } from "@/lib/auth-client";
+import { CHARITIES, CharitySelect } from "@/components/create/charity-select";
+import { FeeStructureInfo } from "@/components/create/fee-structure-info";
+
+// UI Components
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { signIn, useSession } from "@/lib/auth-client";
 import { rpc } from "@/lib/rpc/client";
 
 interface FormErrors {
@@ -43,9 +47,13 @@ function validateForm(form: {
     errors.symbol = "Symbol must be 10 characters or less";
   }
 
+  // Charity wallet validation
   if (!form.charityWallet.trim()) {
     errors.charityWallet = "Charity wallet is required";
-  } else if (form.charityWallet.length < 32 || form.charityWallet.length > 44) {
+  } else if (
+    form.charityWallet !== "random" &&
+    (form.charityWallet.length < 32 || form.charityWallet.length > 44)
+  ) {
     errors.charityWallet =
       "Enter a valid Solana wallet address (32-44 characters)";
   }
@@ -53,13 +61,13 @@ function validateForm(form: {
   return errors;
 }
 
-function FieldError({ error }: { error?: string }) {
+function _FieldError({ error }: { error?: string }) {
   if (!error) {
     return null;
   }
   return (
-    <p className="mt-1.5 flex items-center gap-1 text-destructive text-xs">
-      <WarningIcon className="size-3" weight="bold" />
+    <p className="slide-in-from-top-1 mt-1.5 flex animate-in items-center gap-1 font-medium text-destructive text-xs">
+      <WarningIcon className="size-3.5" weight="bold" />
       {error}
     </p>
   );
@@ -74,8 +82,8 @@ export default function CreatePage() {
     name: "",
     symbol: "",
     description: "",
-    charityWallet: "",
-    charityName: "",
+    charityWallet: "random",
+    charityName: "Random Charity",
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -147,14 +155,14 @@ export default function CreatePage() {
   }, []);
 
   const createMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (data: typeof form) =>
       rpc.launch.create({
-        name: form.name.trim(),
-        symbol: form.symbol.trim().toUpperCase(),
-        description: form.description.trim() || undefined,
+        name: data.name.trim(),
+        symbol: data.symbol.trim().toUpperCase(),
+        description: data.description.trim() || undefined,
         image: imageUrl || undefined,
-        charityWallet: form.charityWallet.trim(),
-        charityName: form.charityName.trim() || undefined,
+        charityWallet: data.charityWallet.trim(),
+        charityName: data.charityName.trim() || undefined,
       }),
     onSuccess: (data) => {
       router.push(`/${data.id}`);
@@ -168,17 +176,28 @@ export default function CreatePage() {
     setTouched({ name: true, symbol: true, charityWallet: true });
 
     if (Object.keys(validationErrors).length === 0) {
-      createMutation.mutate();
+      // Resolve random charity if needed
+      const submissionData = { ...form };
+      if (form.charityWallet === "random") {
+        const realCharities = CHARITIES.filter((c) => c.address !== "random");
+        const randomChoice =
+          realCharities[Math.floor(Math.random() * realCharities.length)];
+        submissionData.charityWallet = randomChoice.address;
+        submissionData.charityName = randomChoice.name;
+      }
+      createMutation.mutate(submissionData);
     }
   };
 
   const updateField = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    if (touched[field]) {
+    const errorField = field as keyof FormErrors;
+
+    if (touched[field] || field === "charityWallet") {
       const newErrors = validateForm({ ...form, [field]: value });
       setErrors((prev) => ({
         ...prev,
-        [field]: newErrors[field as keyof FormErrors],
+        [errorField]: newErrors[errorField],
       }));
     }
   };
@@ -188,267 +207,263 @@ export default function CreatePage() {
     const newErrors = validateForm(form);
     setErrors((prev) => ({
       ...prev,
-      [field]: newErrors[field as keyof FormErrors],
+      [field as keyof FormErrors]: newErrors[field as keyof FormErrors],
     }));
   };
 
-  const inputClass = (field: keyof FormErrors) =>
-    `h-10 w-full border bg-card px-3 text-sm transition-colors focus:outline-none ${
-      errors[field] && touched[field]
-        ? "border-destructive focus:border-destructive"
-        : "border-border focus:border-primary"
-    }`;
-
   return (
-    <div className="mx-auto max-w-xl px-6 py-8">
-      <div className="mb-8">
-        <h1 className="font-medium text-2xl">Create Launch</h1>
-        <p className="mt-1 text-muted-foreground text-sm">
-          Launch a token with transparent, non-extractive fees.
+    <div className="fade-in slide-in-from-bottom-4 mx-auto max-w-3xl animate-in px-6 py-8 duration-700">
+      <div className="mb-12">
+        <h1 className="font-bold text-3xl tracking-tight">Launch Token</h1>
+        <p className="mt-2 text-lg text-muted-foreground">
+          Deploy a token with fair, dynamic fees and built-in charity support.
         </p>
       </div>
 
       <form className="space-y-8" onSubmit={handleSubmit}>
-        <section className="space-y-4">
-          <h2 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-            Token Details
-          </h2>
-
-          <div>
-            <label className="mb-1.5 block text-sm" htmlFor="name">
-              Name
-            </label>
-            <input
-              className={inputClass("name")}
-              id="name"
-              maxLength={50}
-              onBlur={() => handleBlur("name")}
-              onChange={(e) => updateField("name", e.target.value)}
-              placeholder="My Token"
-              type="text"
-              value={form.name}
-            />
-            <FieldError error={touched.name ? errors.name : undefined} />
+        {/* Token Details Section */}
+        <div className="space-y-6">
+          <div className="border-b pb-2">
+            <h2 className="font-semibold text-lg">Token Details</h2>
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-sm" htmlFor="symbol">
-              Symbol
-            </label>
-            <input
-              className={`${inputClass("symbol")} font-mono uppercase`}
-              id="symbol"
-              maxLength={10}
-              onBlur={() => handleBlur("symbol")}
-              onChange={(e) => updateField("symbol", e.target.value)}
-              placeholder="MTK"
-              type="text"
-              value={form.symbol}
-            />
-            <FieldError error={touched.symbol ? errors.symbol : undefined} />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm" htmlFor="description">
-              Description
-              <span className="ml-1 text-muted-foreground">(optional)</span>
-            </label>
-            <textarea
-              className="min-h-20 w-full resize-none border border-border bg-card p-3 text-sm transition-colors focus:border-primary focus:outline-none"
-              id="description"
-              maxLength={500}
-              onChange={(e) => updateField("description", e.target.value)}
-              placeholder="What's this token about?"
-              value={form.description}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm" htmlFor="image-upload">
-              Token Image
-              <span className="ml-1 text-muted-foreground">(optional)</span>
-            </label>
-            {imagePreview ? (
-              <div className="relative inline-block">
-                <div className="relative size-24 overflow-hidden border border-border bg-card">
-                  <Image
-                    alt="Token image preview"
-                    className="object-cover"
-                    fill
-                    src={imagePreview}
-                  />
-                  {isUploading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                      <SpinnerIcon className="size-5 animate-spin text-primary" />
-                    </div>
-                  )}
-                </div>
-                <button
-                  className="absolute -top-2 -right-2 flex size-5 items-center justify-center bg-destructive text-destructive-foreground transition-opacity hover:opacity-80"
-                  onClick={removeImage}
-                  type="button"
-                >
-                  <XIcon className="size-3" weight="bold" />
-                </button>
+          <div className="flex flex-col gap-6 sm:flex-row">
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="name">Name</Label>
+                {touched.name && errors.name && (
+                  <span className="slide-in-from-right-1 animate-in font-medium text-destructive/90 text-xs">
+                    {errors.name}
+                  </span>
+                )}
               </div>
-            ) : (
-              <button
-                className={`flex h-24 w-full items-center justify-center border border-dashed transition-colors ${
-                  isDragging
-                    ? "border-primary bg-primary/5"
-                    : "border-border bg-card hover:border-muted-foreground"
-                }`}
-                onClick={() => document.getElementById("image-upload")?.click()}
-                onDragLeave={() => setIsDragging(false)}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDrop={handleDrop}
-                type="button"
-              >
-                <div className="flex flex-col items-center gap-1 text-muted-foreground">
-                  <ImageIcon className="size-6" />
-                  <span className="text-xs">Drop image or click to upload</span>
-                </div>
-              </button>
-            )}
-            <input
-              accept="image/*"
-              className="hidden"
-              id="image-upload"
-              onChange={handleFileSelect}
-              type="file"
-            />
-            {errors.image && (
-              <p className="mt-1.5 flex items-center gap-1 text-destructive text-xs">
-                <WarningIcon className="size-3" weight="bold" />
-                {errors.image}
-              </p>
-            )}
-          </div>
-        </section>
+              <Input
+                className={
+                  touched.name && errors.name
+                    ? "border-destructive/50 focus-visible:ring-destructive/20"
+                    : ""
+                }
+                id="name"
+                maxLength={50}
+                onBlur={() => handleBlur("name")}
+                onChange={(e) => updateField("name", e.target.value)}
+                placeholder="e.g. Solana Summer"
+                value={form.name}
+              />
+            </div>
 
-        <section className="space-y-4">
-          <h2 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-            Creator Fee
-          </h2>
-
-          <div className="flex items-start gap-3 border border-border bg-muted/30 p-4">
-            <TrendDownIcon
-              className="mt-0.5 size-5 shrink-0 text-primary"
-              weight="bold"
-            />
-            <div className="space-y-2">
-              <p className="font-medium text-sm">Dynamic Fee Structure</p>
-              <p className="text-muted-foreground text-sm">
-                Your creator fee starts at{" "}
-                <span className="font-mono text-foreground">0.95%</span> for
-                early trading when hype matters most, then automatically
-                decreases to{" "}
-                <span className="font-mono text-foreground">0.05%</span> as your
-                token grows.
-              </p>
-              <p className="text-muted-foreground text-xs">
-                This rewards early effort while keeping fees low for high-volume
-                trading on successful tokens.
-              </p>
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="symbol">Ticker</Label>
+                {touched.symbol && errors.symbol && (
+                  <span className="slide-in-from-right-1 animate-in font-medium text-destructive/90 text-xs">
+                    {errors.symbol}
+                  </span>
+                )}
+              </div>
+              <Input
+                className={`font-mono uppercase ${touched.symbol && errors.symbol ? "border-destructive/50 focus-visible:ring-destructive/20" : ""}`}
+                id="symbol"
+                maxLength={10}
+                onBlur={() => handleBlur("symbol")}
+                onChange={(e) => updateField("symbol", e.target.value)}
+                placeholder="e.g. SOL"
+                value={form.symbol}
+              />
             </div>
           </div>
-        </section>
 
-        <section className="space-y-4">
-          <div className="flex items-start gap-2">
-            <h2 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-              Charity Destination
-            </h2>
-            <span className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 font-mono text-primary text-xs">
-              30%
-            </span>
-          </div>
+          <div className="flex flex-col items-start gap-6 sm:flex-row">
+            <div className="flex w-full flex-1 flex-col space-y-2">
+              <Label htmlFor="description">
+                Description{" "}
+                <span className="ml-1 font-normal text-muted-foreground">
+                  (Optional)
+                </span>
+              </Label>
+              <textarea
+                className="flex min-h-[192px] w-full flex-1 resize-none rounded-xl border border-input bg-muted/50 px-4 py-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                id="description"
+                maxLength={500}
+                onChange={(e) => updateField("description", e.target.value)}
+                placeholder="Tell the world what this token is about..."
+                value={form.description}
+              />
+            </div>
 
-          <div className="flex items-start gap-2 border border-border bg-muted/30 p-3">
-            <InfoIcon
-              className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-              weight="fill"
-            />
-            <p className="text-muted-foreground text-xs">
-              30% of all trading fees are sent directly to this wallet. This is
-              enforced on-chain and cannot be changed after deployment.
-            </p>
+            <div className="flex w-full shrink-0 flex-col space-y-2 sm:w-48">
+              <div className="flex items-center justify-between whitespace-nowrap">
+                <Label>
+                  Token Image{" "}
+                  <span className="ml-1 font-normal text-muted-foreground">
+                    (Optional)
+                  </span>
+                </Label>
+                {errors.image && (
+                  <span className="slide-in-from-right-1 animate-in font-medium text-destructive/90 text-xs">
+                    {errors.image}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                {imagePreview ? (
+                  <div className="group relative size-48 overflow-hidden rounded-xl border border-input bg-muted/50 shadow-sm">
+                    <Image
+                      alt="Token image preview"
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      fill
+                      src={imagePreview}
+                    />
+                    {isUploading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                        <SpinnerIcon className="size-6 animate-spin text-white" />
+                      </div>
+                    )}
+                    <button
+                      className="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-white transition-colors hover:bg-destructive"
+                      onClick={removeImage}
+                      type="button"
+                    >
+                      <XIcon className="size-4" weight="bold" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className={`flex size-48 h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed transition-all duration-200 ${
+                      isDragging
+                        ? "border-primary bg-primary/10"
+                        : "border-input bg-muted/50 hover:border-primary/50 hover:bg-muted/80"
+                    }`}
+                    onClick={() =>
+                      document.getElementById("image-upload")?.click()
+                    }
+                    onDragLeave={() => setIsDragging(false)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDrop={handleDrop}
+                    onPaste={(e) => {
+                      const file = e.clipboardData.files[0];
+                      if (file) {
+                        uploadImage(file);
+                      }
+                    }}
+                    type="button"
+                  >
+                    <div className="rounded-full bg-background/50 p-2 shadow-sm">
+                      <ImageIcon className="size-6 text-muted-foreground" />
+                    </div>
+                    <div className="px-2 text-center">
+                      <p className="font-medium text-sm">
+                        Upload or Drop Image
+                      </p>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        1000x1000px (1:1)
+                      </p>
+                    </div>
+                  </button>
+                )}
+                <input
+                  accept="image/*"
+                  className="hidden"
+                  id="image-upload"
+                  onChange={handleFileSelect}
+                  type="file"
+                />
+              </div>
+            </div>
           </div>
+        </div>
 
-          <div>
-            <label className="mb-1.5 block text-sm" htmlFor="charityWallet">
-              Wallet Address
-            </label>
-            <input
-              className={`${inputClass("charityWallet")} font-mono`}
-              id="charityWallet"
-              onBlur={() => handleBlur("charityWallet")}
-              onChange={(e) => updateField("charityWallet", e.target.value)}
-              placeholder="Enter Solana wallet address"
-              type="text"
-              value={form.charityWallet}
-            />
-            <FieldError
-              error={touched.charityWallet ? errors.charityWallet : undefined}
-            />
-          </div>
+        {/* Financials Section */}
+        <div className="space-y-8">
+          {/* Fee Info Visual */}
+          <FeeStructureInfo />
 
-          <div>
-            <label className="mb-1.5 block text-sm" htmlFor="charityName">
-              Display Name
-              <span className="ml-1 text-muted-foreground">(optional)</span>
-            </label>
-            <input
-              className="h-10 w-full border border-border bg-card px-3 text-sm transition-colors focus:border-primary focus:outline-none"
-              id="charityName"
-              maxLength={100}
-              onChange={(e) => updateField("charityName", e.target.value)}
-              placeholder="e.g. Red Cross, Local Food Bank"
-              type="text"
-              value={form.charityName}
-            />
+          {/* Charity Section */}
+          <div className="space-y-4">
+            <div>
+              <div className="mb-1 flex items-center gap-2">
+                <span className="font-bold text-muted-foreground text-xs uppercase tracking-widest">
+                  Charity Destination
+                </span>
+                <span className="rounded-[2px] border border-orange-500/20 bg-orange-500/10 px-1.5 py-0.5 font-bold font-mono text-[10px] text-orange-500">
+                  30% of fees
+                </span>
+              </div>
+              <CharitySelect
+                error={touched.charityWallet ? errors.charityWallet : undefined}
+                onChange={(wallet, name) => {
+                  updateField("charityWallet", wallet);
+                  if (name) {
+                    updateField("charityName", name);
+                  }
+                }}
+                value={form.charityWallet}
+              />
+            </div>
           </div>
-        </section>
+        </div>
 
         {createMutation.error && (
-          <div className="flex items-start gap-2 border border-destructive/30 bg-destructive/5 p-3">
+          <div className="flex items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-4">
             <WarningIcon
-              className="mt-0.5 size-4 shrink-0 text-destructive"
+              className="mt-0.5 size-5 shrink-0 text-destructive"
               weight="bold"
             />
             <div>
-              <p className="font-medium text-destructive text-sm">
-                Failed to create launch
+              <p className="font-semibold text-destructive text-sm">
+                Creation Failed
               </p>
-              <p className="text-destructive/80 text-xs">
+              <p className="mt-1 text-destructive/90 text-sm">
                 {createMutation.error.message}
               </p>
             </div>
           </div>
         )}
 
-        <button
-          className="flex h-12 w-full items-center justify-center gap-2 bg-primary font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={!isAuthenticated || createMutation.isPending || isUploading}
-          type="submit"
-        >
-          {!isAuthenticated && (
-            <>
-              <LockSimpleIcon className="size-5" weight="bold" />
-              Sign in to create
-            </>
-          )}
-          {isAuthenticated && createMutation.isPending && "Creating..."}
-          {isAuthenticated && !createMutation.isPending && (
-            <>
-              <RocketIcon className="size-5" weight="bold" />
-              Create Launch
-            </>
-          )}
-        </button>
+        <div className="pt-4">
+          <button
+            className="group relative flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-primary px-8 font-semibold text-primary-foreground shadow-lg transition-all hover:scale-[1.01] hover:shadow-xl disabled:pointer-events-none disabled:opacity-50"
+            disabled={
+              isAuthenticated && (createMutation.isPending || isUploading)
+            }
+            onClick={
+              isAuthenticated
+                ? undefined
+                : () => signIn.social({ provider: "twitter" })
+            }
+            type={isAuthenticated ? "submit" : "button"}
+          >
+            <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
+
+            {!isAuthenticated && (
+              <>
+                <LockSimpleIcon className="size-5" weight="bold" />
+                <span>Sign in to Launch</span>
+              </>
+            )}
+            {isAuthenticated && createMutation.isPending && (
+              <>
+                <SpinnerIcon className="size-5 animate-spin" />
+                <span>Initializing...</span>
+              </>
+            )}
+            {isAuthenticated && !createMutation.isPending && (
+              <>
+                <RocketIcon
+                  className="size-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1"
+                  weight="fill"
+                />
+                <span>Launch Token</span>
+              </>
+            )}
+          </button>
+          <p className="mt-4 text-center text-muted-foreground text-xs">
+            By launching, you agree to the platform terms and conditions.
+          </p>
+        </div>
       </form>
     </div>
   );
