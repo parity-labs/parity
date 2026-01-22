@@ -47,6 +47,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useWalletBalance } from "@/hooks/use-wallet-balance";
+import { getErrorMessage } from "@/lib/error-utils";
 import { rpc } from "@/lib/rpc/client";
 import { getConnection } from "@/lib/solana";
 import { formatPrice, formatSol, solToLamports } from "@/lib/solana-utils";
@@ -234,7 +235,7 @@ function QuickBuy({
       queryClient.invalidateQueries({ queryKey: ["pool-price", poolAddress] });
       onSuccess?.();
     },
-    onError: (err) => setError(err.message),
+    onError: (err) => setError(getErrorMessage(err)),
   });
 
   const handleSwap = () => {
@@ -522,7 +523,7 @@ export function LaunchClient() {
       queryClient.invalidateQueries({ queryKey: ["launch", id] });
       queryClient.invalidateQueries({ queryKey: ["launches"] });
     },
-    onError: (err) => setDeployError(err.message),
+    onError: (err) => setDeployError(getErrorMessage(err)),
   });
 
   const handleDeploy = () => {
@@ -824,15 +825,25 @@ export function LaunchClient() {
                   <span className="text-muted-foreground text-sm">
                     Charity Wallet
                   </span>
-                  <button
-                    className="flex items-center gap-1 font-mono text-sm hover:text-primary"
-                    onClick={() => copyToClipboard(launch.charityWallet)}
-                    type="button"
-                  >
-                    {launch.charityWallet.slice(0, 4)}...
-                    {launch.charityWallet.slice(-4)}
-                    <CopyIcon className="size-3.5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="flex items-center gap-1 font-mono text-sm hover:text-primary"
+                      onClick={() => copyToClipboard(launch.charityWallet)}
+                      type="button"
+                    >
+                      {launch.charityWallet.slice(0, 4)}...
+                      {launch.charityWallet.slice(-4)}
+                      <CopyIcon className="size-3.5" />
+                    </button>
+                    <a
+                      className="text-muted-foreground transition-colors hover:text-primary"
+                      href={`https://solscan.io/account/${launch.charityWallet}`}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      <ArrowSquareOutIcon className="size-3.5" />
+                    </a>
+                  </div>
                 </div>
                 {launch.poolAddress && (
                   <CopyableAddress
